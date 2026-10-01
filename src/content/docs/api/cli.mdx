@@ -58,6 +58,18 @@ For local development machines, authenticate using the interactive device author
 $ telmoni login
 ```
 
+For headless environments or SSH sessions where a browser cannot be opened automatically, add `--no-browser`:
+
+```console
+$ telmoni login --no-browser
+```
+
+To authenticate against a self-hosted Telmoni instance, supply the `--endpoint` flag (or set `TELMONI_ENDPOINT`):
+
+```console
+$ telmoni login --endpoint https://telmoni.example.com
+```
+
 The CLI prints a one-time verification code and URL:
 
 ```text
@@ -214,6 +226,17 @@ https://telmoni.internal.company.com
 | Key | Description | Default |
 |---|---|---|
 | `endpoint` | The Telmoni server URL to target | `https://telmoni.com` |
+| `output_format` | Default command output format (`text` or `json`) | `text` |
+
+---
+
+## Global options
+
+| Option | Description |
+|---|---|
+| `-v`, `--verbose` | Enable verbose debug logging to stderr (`telmoni=debug,info`) |
+| `-h`, `--help` | Print help information |
+| `-V`, `--version` | Print version information |
 
 ---
 

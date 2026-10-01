@@ -33,10 +33,10 @@ Before starting, ensure your host has the following tools installed:
 
 2. **Generate secrets and configure environment variables**
 
-   Create a `.env` file in the project root:
+   Compose reads `.env` from the compose file's directory. With `docker compose -f deploy/compose/docker-compose.yml`, the environment file is `deploy/compose/.env`:
 
    ```bash
-   cp .env.example .env
+   cp .env.example deploy/compose/.env
    ```
 
    Telmoni requires two cryptographic secrets to start:
@@ -51,7 +51,7 @@ Before starting, ensure your host has the following tools installed:
    openssl rand -hex 32
    ```
 
-   Update your `.env` file with the generated secrets and set your initial administrator credentials:
+   Update `deploy/compose/.env` with the generated secrets and set your initial administrator credentials:
 
    ```sh
    # Secrets
@@ -93,9 +93,9 @@ Before starting, ensure your host has the following tools installed:
    3. Starts the `server` container on internal port `8082`.
    4. Starts the `web` container on port `3000`.
 
-4. **Verify container health**
+4. **Verify container status**
 
-   Check that all services are healthy and running:
+   Check running containers:
 
    ```bash
    docker compose -f deploy/compose/docker-compose.yml ps
@@ -104,17 +104,29 @@ Before starting, ensure your host has the following tools installed:
    Expected output:
 
    ```text
-   NAME                IMAGE                            COMMAND                  SERVICE    STATUS
-   telmoni-postgres    pgvector/pgvector:pg17           "postgres -c max_con…"   postgres   Up (healthy)
-   telmoni-redis       redis:7-alpine                   "redis-server --save…"   redis      Up (healthy)
-   telmoni-migrate     ghcr.io/telmoni/server:latest    "telmoni migrate"        migrate    Exited (0)
-   telmoni-server      ghcr.io/telmoni/server:latest    "telmoni serve"          server     Up (healthy)
-   telmoni-web         ghcr.io/telmoni/web:latest       "docker-entrypoint.s…"   web        Up
+   NAME                       IMAGE                           COMMAND                  SERVICE    STATUS
+   telmoni-postgres           pgvector/pgvector:pg17          "postgres -c max_con…"   postgres   Up (healthy)
+   telmoni-redis              redis:7-alpine                  "redis-server --save…"   redis      Up (healthy)
+   telmoni-selfhost-server-1  ghcr.io/telmoni/server:latest   "/app/telmoni serve"     server     Up
+   telmoni-selfhost-web-1     ghcr.io/telmoni/web:latest      "docker-entrypoint.s…"   web        Up
+   ```
+
+   Postgres and Redis run as `telmoni-postgres` and `telmoni-redis` with configured healthchecks and show `(healthy)`. The `server` and `web` containers (and `ollama` when running with `--profile agent`) are named `telmoni-selfhost-<service>-1`. They have no healthcheck, so they show `Up`. The server image's entrypoint is `/app/telmoni`.
+
+   The one-shot `migrate` container exits when done. It appears only when listing all containers with `docker compose ps -a`, showing `Exited (0)`:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml ps -a
+   ```
+
+   ```text
+   NAME                        IMAGE                           COMMAND                  SERVICE    STATUS
+   telmoni-selfhost-migrate-1  ghcr.io/telmoni/server:latest   "/app/telmoni migrate"   migrate    Exited (0)
    ```
 
 5. **Log in to the console**
 
-   Open your browser and navigate to `http://localhost:3000`. Log in with the `ADMIN_EMAIL` and `ADMIN_PASSWORD` you configured in your `.env` file. Upon your first login, Telmoni automatically creates your default Organization and primary Project.
+   Open your browser and navigate to `http://localhost:3000`. Log in with the `ADMIN_EMAIL` and `ADMIN_PASSWORD` you configured in `deploy/compose/.env`. Upon your first login, Telmoni automatically creates your default Organization and primary Project.
 
 </Steps>
 
@@ -136,7 +148,7 @@ Telmoni includes an AI context agent with vector similarity search. You can run 
    docker compose -f deploy/compose/docker-compose.yml exec ollama ollama pull nomic-embed-text
    ```
 
-3. Set the agent environment variables in your `.env` file:
+3. Set the agent environment variables in `deploy/compose/.env`:
 
    ```sh
    AGENT_MODEL_PROVIDER=openai
@@ -146,10 +158,10 @@ Telmoni includes an AI context agent with vector similarity search. You can run 
    EMBEDDINGS_MODEL=nomic-embed-text
    ```
 
-4. Restart the server container to apply the changes:
+4. Recreate the server container to apply the changes (`restart` keeps the container's old environment):
 
    ```bash
-   docker compose -f deploy/compose/docker-compose.yml restart server
+   docker compose -f deploy/compose/docker-compose.yml --profile agent up -d server
    ```
 
 ---
@@ -168,10 +180,10 @@ docker compose -f deploy/compose/docker-compose.yml logs -f web
 
 ### Rotating audit partitions
 
-The audit log uses monthly PostgreSQL partitions. To maintain the 4-month forward partition runway and drop tables beyond your retention policy, execute:
+The audit log uses monthly PostgreSQL partitions. To maintain the 4-month forward partition runway, execute:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.yml run --rm migrate telmoni rotate
+docker compose -f deploy/compose/docker-compose.yml run --rm migrate rotate
 ```
 
 ### Stopping the stack

@@ -13,9 +13,8 @@ On standalone and self-hosted instances using Telmoni's built-in authentication:
 - **Sign up**: Enter your email address, a password (minimum 8 characters), and
   optionally a display name. Telmoni emails a confirmation link that expires in
   24 hours. The account cannot be used until you verify your address.
-- **Sign in**: Authenticate with your email and password. To protect against
-  brute force attacks, ten consecutive incorrect attempts lock the account for
-  15 minutes.
+- **Sign in**: Authenticate with your email and password. Five consecutive
+  incorrect attempts lock the account for 5 minutes (`crates/auth/src/db/credentials.rs`).
 - **Password reset**: Selecting **Forgot your password?** emails a single-use
   reset link valid for 60 minutes. Using the link terminates all active sessions.
 

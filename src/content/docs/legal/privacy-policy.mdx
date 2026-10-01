@@ -46,6 +46,11 @@ them, who belongs to each and at what role, the addresses you send invitations
 to, and the names of the API tokens you mint. The service executes nothing on
 your behalf, so there are no workload inputs or outputs here.
 
+Console agent data: questions you ask the console agent and its answers. A
+person's conversations with the agent are visible only to them. To answer
+questions, the questions and the passages retrieved for them are sent to the
+model provider the deployment configures.
+
 Operational data: service logs, usage metrics, and an append-only audit trail
 of actions taken in your organization, attributed to the acting member.
 
@@ -209,13 +214,21 @@ an organization closes it at once: nobody in it can use it, its API keys stop
 working, and its subscription is cancelled and refunded. For 14 days its owner
 can restore it, whole, from their account's privacy page. After that a
 verified cascade hard-deletes its projects, memberships, pending invitations,
-API tokens and notifications across every service; it deletes nobody's
-account.
+API tokens, notifications, agent conversations and search index across every
+service; it deletes nobody's account.
 
 Deleting your account erases your sessions, your memberships and your record
 at the identity provider, together with every organization you own alone.
 While you own an organization other people belong to, you hand it to one of
-them or remove them first. An account has no restore window.
+them or remove them first. An account has no restore window. Deleting an account
+deletes that person's conversations and search index rows, and rewrites their
+name and address where other people's agent answers quoted them.
+
+A person's conversations with the agent are visible only to them, and kept 90
+days after the conversation was last used. The agent's search index holds copies
+of the docs, the audit log, feed notices and deliveries. Each copy is kept no
+longer than its source's own window: audit 730 days, feed 90 days, deliveries 30
+days.
 
 Erasure falls due when an organization's 14 days end, or the moment you
 confirm deleting your account. We complete it within 30 days of its falling

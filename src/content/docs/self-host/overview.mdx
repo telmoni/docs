@@ -46,7 +46,7 @@ When moving from a local evaluation or single-node Docker quickstart to a produc
 - **Enterprise OIDC Authentication (Recommended)**: While the email and password setup (`ADMIN_EMAIL` / `ADMIN_PASSWORD`) is provided to bootstrap an instance quickly, we strongly recommend connecting an OpenID Connect (OIDC) identity provider (Okta, Keycloak, Microsoft Entra ID, Authentik, Google Workspace). Once OIDC is tested, disable the password form entirely via `DISABLE_LOGIN_FORM=true` to eliminate credential stuffing and enforce corporate MFA.
 - **Database Least-Privilege & RLS**: Never connect application pools as a PostgreSQL superuser. Apply `crates/migrator/sql/role_hardening.sql` to enforce `NOBYPASSRLS` across `auth`, `notifications`, and `agent` roles.
 - **Reverse Proxy with TLS**: Never expose internal ports `3000` or `8082` directly to the internet. Always terminate TLS using Caddy, Nginx, or a cloud Ingress controller.
-- **Audit Partition Maintenance**: Schedule `telmoni rotate` weekly via cron or a Kubernetes CronJob to maintain the 4-month forward partition runway and drop expired logs according to your retention policy.
+- **Audit Partition Maintenance**: Schedule `telmoni rotate` weekly via cron or a Kubernetes CronJob to maintain the 4-month forward partition runway.
 - **Encryption Key Retention**: Store `CONNECTOR_KEK` securely in a secret manager or Cloud KMS. Back up this key alongside your database dumps to ensure connector credentials remain decryptable.
 
 ---

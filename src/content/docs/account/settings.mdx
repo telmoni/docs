@@ -1,6 +1,6 @@
 ---
 title: "Account settings"
-description: "Managing your display name, changing your account email address, and resetting your password."
+description: "Managing your display name, changing your account email address, resetting your password, and interface preferences."
 ---
 
 Your account's **Settings** page (`/account/settings`) manages personal account
@@ -40,3 +40,14 @@ For email/password accounts, select **Email me a password reset link**. A single
 token is dispatched to your email address, valid for **60 minutes**. Using the
 reset link invalidates all existing sessions and updates the stored Argon2id
 password hash.
+
+## Interface preferences
+
+The user menu in the console header configures display preferences for your
+browser session:
+
+- **Theme**: Select **System theme** (synchronizes with your operating system's
+  appearance), **Light theme**, or **Dark theme**.
+- **Corners**: Configure UI geometry between **Rounded corners** and **Sharp corners**.
+- **Keyboard shortcuts**: Press `?` or select **Keyboard shortcuts** from the
+  user menu to inspect available shortcuts and toggle single-key navigation.

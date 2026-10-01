@@ -21,6 +21,23 @@ session, sign out from the user menu.
 navigation events to identify errors and UX friction points. It never collects
 API tokens, credentials, or workspace payloads.
 
+## Console agent data
+
+A person's conversations with the console agent (their questions and its answers)
+are visible only to them, and are kept for 90 days after the conversation was
+last used.
+
+The agent's search index holds copies of the documentation, the audit log,
+activity feed notices, and connector deliveries. Each copy is kept no longer
+than its source's own retention window:
+- **Audit log**: 730 days
+- **Activity feed notices**: 90 days
+- **Connector deliveries**: 30 days
+- **Documentation**: Retained until updated or removed from the published corpus
+
+Questions asked of the agent, and the passages retrieved to answer them, are
+sent to the model provider configured for the deployment.
+
 ## Deleting an organization
 
 Only an organization **Owner** can delete an organization. Deletion is initiated
@@ -31,6 +48,9 @@ from the **Danger zone** in **Organization Settings**
    remains valid for 15 minutes.
 2. Enter the confirmation code to confirm deletion.
 3. Access ends immediately for all members, and all API keys stop functioning.
+
+Deleting an organization permanently deletes its agent conversations and search
+index.
 
 ### Restoring a deleted organization
 
@@ -43,7 +63,8 @@ remains in a soft-deleted state (`pending_deletion`). During this window:
   members, API keys, and notification channels exactly as they were.
 
 After 14 days have elapsed, the automated deletion sweep permanently erases the
-organization, its projects, and all associated data.
+organization, its projects, its agent conversations and search index, and all
+associated data.
 
 ## Deleting your account
 
@@ -72,6 +93,9 @@ other members.** You must either:
   destroyed via account deletion.
 - **Other organizations you belong to**: You are removed from all other
   organizations and projects. Workspace audit logs record your departure.
+- **Console agent**: Deletes your conversations with the agent and your personal
+  index rows, and rewrites your name and address where other people's agent
+  answers quoted them.
 - **Notifications**: Feed notices referencing your account are anonymized
   (e.g., "A former member joined").
 - **Authentication**: Your password hash or identity provider association is

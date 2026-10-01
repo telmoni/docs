@@ -24,7 +24,7 @@ flowchart TD
     EmbeddingsSvc --> EmbeddingsPod["Deployment: embeddings (Ollama)"]
 
     HookJob["Pre-install / Pre-upgrade Job: migrator"] -.->|Runs DDL & Grants| Postgres
-    RotateCron["CronJob: rotate (telmoni rotate)"] -.->|Weekly partition maintenance| Postgres
+    RotateCron["CronJob: rotate (telmoni rotate)"] -.->|Scheduled partition maintenance| Postgres
 ```
 
 ---
@@ -35,6 +35,7 @@ Before deploying the Helm chart, ensure you have:
 - A Kubernetes cluster (v1.28 or newer)
 - [Helm](https://helm.sh/docs/intro/install/) (v3.12 or newer)
 - A PostgreSQL 17 database instance with the `vector` extension installed
+- The four login roles `auth`, `notifications`, `agent` and `migrator`, created and hardened with `role_hardening.sql` as the [production guide](/self-host/production/) describes; the connection strings below log in as them
 - A Redis 7 instance (standalone or clustered)
 - Gateway API CRDs or an Ingress controller (e.g., Traefik, NGINX Ingress, or GKE Gateway)
 
@@ -59,19 +60,21 @@ Before deploying the Helm chart, ensure you have:
    AUTH_SECRET=$(openssl rand -hex 32)
    ```
 
+   `DATABASE_CA_CERT` (the PEM of the database's CA) belongs in both Secrets the chart reads: `server-secrets`, and `migrator-secrets`, which holds `MIGRATOR_DATABASE_URL` and `DATABASE_CA_CERT`. In a Kubernetes pod the server and the migrator refuse to start without it (`crates/shared/src/db.rs`, `database_ca_from_env`).
+
    Create the required Kubernetes secret objects:
 
    ```bash
    # 1. Server secrets
    kubectl create secret generic server-secrets \
      --namespace telmoni \
-     --from-literal=AUTH_DATABASE_URL="postgres://telmoni_auth:auth_pass@postgres.internal:5432/telmoni" \
-     --from-literal=NOTIFICATIONS_DATABASE_URL="postgres://telmoni_notif:notif_pass@postgres.internal:5432/telmoni" \
-     --from-literal=AGENT_DATABASE_URL="postgres://telmoni_agent:agent_pass@postgres.internal:5432/telmoni" \
+     --from-literal=AUTH_DATABASE_URL="postgres://auth:auth_pass@postgres.internal:5432/telmoni" \
+     --from-literal=NOTIFICATIONS_DATABASE_URL="postgres://notifications:notif_pass@postgres.internal:5432/telmoni" \
+     --from-literal=AGENT_DATABASE_URL="postgres://agent:agent_pass@postgres.internal:5432/telmoni" \
      --from-literal=SERVICE_SECRET="$SERVICE_SECRET" \
-     --from-literal=CONNECTOR_KEK="local:0000000000000000000000000000000000000000000000000000000000000000" \
      --from-literal=ADMIN_EMAIL="admin@example.com" \
-     --from-literal=ADMIN_PASSWORD="initial_strong_admin_password"
+     --from-literal=ADMIN_PASSWORD="initial_strong_admin_password" \
+     --from-file=DATABASE_CA_CERT=/path/to/database-ca.pem
 
    # 2. Web console secrets
    kubectl create secret generic web-secrets \
@@ -83,12 +86,15 @@ Before deploying the Helm chart, ensure you have:
    # 3. Migrator secrets
    kubectl create secret generic migrator-secrets \
      --namespace telmoni \
-     --from-literal=MIGRATOR_DATABASE_URL="postgres://telmoni_migrator:migrator_pass@postgres.internal:5432/telmoni"
+     --from-literal=MIGRATOR_DATABASE_URL="postgres://migrator:migrator_pass@postgres.internal:5432/telmoni" \
+     --from-file=DATABASE_CA_CERT=/path/to/database-ca.pem
    ```
 
 2. **Configure Helm values**
 
-   Create a custom `values-prod.yaml` file:
+   Create a custom `values-prod.yaml` file. 
+
+   Notice that `CONNECTOR_KEK` is not a secret, and a `local:` key is refused in a pod (`crates/notifications/src/boot.rs`). It comes from the chart value `config.connectorKek`, set to a Cloud KMS key name like `projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>`:
 
    ```yaml
    config:
@@ -98,6 +104,7 @@ Before deploying the Helm chart, ensure you have:
      authUrl: "https://telmoni.example.com"
      allowSignUp: false
      verifyEmail: false
+     connectorKek: "projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/connector-kek"
 
      # Optional AI Agent configuration
      agent:
@@ -144,21 +151,19 @@ Before deploying the Helm chart, ensure you have:
    # High availability configurations
    highAvailability:
      enabled: true
-     podDisruptionBudget:
-       minAvailable: 1
-     autoscaling:
-       enabled: true
-       minReplicas: 2
-       maxReplicas: 10
-       targetCPUUtilizationPercentage: 80
+     minReplicas: 2
+     maxReplicas: 3
+     targetCpuUtilization: 70
 
    # Database migration and partition maintenance
    migrator:
      enabled: true
      hook:
        enabled: true # Executes as a pre-install / pre-upgrade Helm hook
-     rotateSchedule: "0 3 * * 0" # Weekly partition rotation
+     rotateSchedule: "0 2 * * *" # Daily partition rotation
    ```
+
+   Enabling `highAvailability.enabled` creates a `HorizontalPodAutoscaler` and a `PodDisruptionBudget` for both `web` and `server` (`deploy/charts/telmoni/templates/high-availability.yaml`).
 
 3. **Install the Helm chart**
 
@@ -204,4 +209,5 @@ The Telmoni Helm chart implements strict zero-trust defaults:
   - `allow-embeddings-egress`: Strictly limits embeddings egress to port 443 for initial model downloading, blocking all internal cluster scanning.
   - `allow-server-to-embeddings`: Explicitly gates backend egress to the embeddings port `11434`.
 - **Pre-upgrade Migration Safety**: Migrations run as a Kubernetes `Job` annotated with `"helm.sh/hook": pre-install,pre-upgrade` with weight `-5`. If any database migration fails, the Helm deployment halts immediately before any server or web pods are updated.
-- **Partition Management**: A scheduled `CronJob` (`name: rotate`) runs `telmoni rotate` weekly to pre-create partition tables for the next quarter and prune expired audit tables.
+- **Partition Management**: The chart runs partition rotation itself, as a CronJob (`migrator.rotateSchedule`, default `"0 2 * * *"`), running `telmoni rotate` to ensure the current month and the next three months of audit partitions exist ahead of time.
+

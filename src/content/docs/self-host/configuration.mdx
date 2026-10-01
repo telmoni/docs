@@ -15,7 +15,7 @@ These variables configure the Rust backend service (`telmoni serve`).
 | `APP_URL` | `http://localhost:3000` | The public origin of the web console. Used to format invitation links, password reset emails, and OAuth callback URLs. |
 | `SERVICE_SECRET` | *Required* | A cryptographically secure secret shared between the web console and the core server. Used to sign and authenticate internal service calls. |
 | `SERVICE_SECRET_NEXT` | *Optional* | A secondary service secret accepted alongside `SERVICE_SECRET`. Used for zero-downtime secret rotation. |
-| `DATABASE_CA_CERT` | *Optional* | PEM-encoded certificate authority used to verify TLS connections to managed PostgreSQL instances. |
+| `DATABASE_CA_CERT` | *Optional* | Required in a Kubernetes pod, optional elsewhere. When set, connections verify the server's certificate against it. |
 | `ALLOW_TEST_SESSION` | `false` | When `true`, exposes the `POST /test/session` route for end-to-end testing. Refused at boot in Kubernetes production environments. |
 | `DELETION_TAIL_BUDGET_MS` | `8000` | Wall-clock time budget in milliseconds for inline deletion sagas before returning an HTTP `202 Accepted` to the caller and handing off the remaining purges to the background sweep task. |
 
@@ -95,7 +95,7 @@ Telmoni supports enterprise Identity Providers (Okta, Keycloak, Microsoft Entra 
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `CONNECTOR_KEK` | *Required for connectors* | The Key Encryption Key used to seal integration credentials and secrets at rest. Format: `local:<64-hex-characters>` or a Google Cloud KMS key resource identifier. |
+| `CONNECTOR_KEK` | *Required for connectors* | The Key Encryption Key used to seal integration credentials and secrets at rest. `local:` plus 64 hex characters is for a machine you control and is refused in a Kubernetes pod. Otherwise, a Cloud KMS key name (`projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>`). |
 | `SLACK_CLIENT_ID` | *Optional* | Client ID for the Telmoni Slack application. |
 | `SLACK_CLIENT_SECRET` | *Optional* | Client Secret for the Slack application. |
 | `SLACK_SIGNING_SECRET` | *Optional* | Secret used to verify HMAC signatures of inbound Slack event webhooks. |
@@ -111,10 +111,17 @@ The embedded AI assistant uses 768-dimensional embeddings to query project metad
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `AGENT_MODEL_PROVIDER` | *Optional* | Model provider protocol: `anthropic` or `openai`. (OpenAI protocol supports OpenAI, Gemini compatible endpoints, Ollama, and vLLM). |
-| `AGENT_MODEL_URL` | *Optional* | Base API URL (e.g., `http://ollama:11434/v1` or `https://api.openai.com/v1`). |
-| `AGENT_MODEL` | `claude-sonnet-5` (Anthropic) | The LLM model identifier (e.g., `claude-3-5-sonnet-latest`, `gpt-4o`, `llama3.2`). |
-| `AGENT_MODEL_API_KEY` | *Optional* | Bearer API token for hosted model providers. |
-| `EMBEDDINGS_URL` | `http://ollama:11434/v1` | URL for the OpenAI-compatible vector embedding endpoint. |
+| `AGENT_MODEL_URL` | `https://api.anthropic.com` (anthropic) / `https://api.openai.com/v1` (openai) | Base API URL for chat completion requests. |
+| `AGENT_MODEL` | `claude-sonnet-5` (anthropic) / *Required* (openai) | LLM model identifier. |
+| `AGENT_MODEL_API_KEY` | *Optional* | API key for the model provider. Required when `AGENT_MODEL_URL` is a hosted API (`api.anthropic.com`, `api.openai.com`, `generativelanguage.googleapis.com`); the server refuses to start without it. |
+| `AGENT_MAX_TOKENS` | `8192` | The longest reply one model call may write. |
+| `AGENT_MODEL_TIMEOUT_SECS` | `60` | Model API timeout in seconds. Allowed range is 1 to 100. |
+| `AGENT_MESSAGES_PER_HOUR` | `60` | Maximum questions allowed per person per hour. |
+| `EMBEDDINGS_URL` | `http://localhost:11434/v1` | URL for the OpenAI-compatible vector embedding endpoint. (The Compose file sets `http://ollama:11434/v1`). |
 | `EMBEDDINGS_MODEL` | `nomic-embed-text` | Embedding model identifier. Vector columns are fixed at 768 dimensions. |
-| `EMBEDDINGS_API_KEY` | *Optional* | API token for the embeddings provider. |
+| `EMBEDDINGS_API_KEY` | *Optional* | API token for the embeddings provider. Required when `EMBEDDINGS_URL` is a hosted API. |
+| `EMBEDDINGS_REQUEST_DIMENSIONS` | `false` | When `true`, requests 768-wide vectors from hosted models that shorten on request. |
+| `RERANK_URL` | *Optional* | URL of a reranking endpoint (taking `{model, query, documents}` and returning ranked results). Setting it turns reranking on. |
+| `RERANK_MODEL` | *Required if RERANK_URL set* | Reranker model identifier. |
+| `RERANK_API_KEY` | *Optional* | API key for the rerank endpoint. |
 | `DOCS_CORPUS_URL` | `https://docs.telmoni.com/llms-full.txt` | Remote documentation corpus ingested for the agent's contextual knowledge base. Set to `off` to disable documentation indexing. |

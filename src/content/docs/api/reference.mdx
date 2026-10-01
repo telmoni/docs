@@ -71,7 +71,7 @@ Retrieves the organization associated with the presented token.
 ## `GET /v1/members`
 
 Returns the roster of members in the organization, listed with the Owner first,
-followed by members ordered by join date.
+followed by members ordered by join date, newest first.
 
 ### Response
 
@@ -86,7 +86,7 @@ followed by members ordered by join date.
       "email": "you@example.com",
       "display_name": "Sam Rivera",
       "role": "owner",
-      "created_at": "2026-09-01T12:00:00Z",
+      "created_at": "2026-09-10T12:00:00Z",
       "is_owner": true,
       "ownership_offer_expires_at": null
     },
@@ -96,7 +96,7 @@ followed by members ordered by join date.
       "email": "alex@example.com",
       "display_name": null,
       "role": "admin",
-      "created_at": "2026-09-10T09:30:00Z",
+      "created_at": "2026-09-01T09:30:00Z",
       "is_owner": false,
       "ownership_offer_expires_at": null
     }

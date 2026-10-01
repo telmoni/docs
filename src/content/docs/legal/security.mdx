@@ -58,11 +58,12 @@ debug print cannot leak one.
 
 ## Access control
 
-Sign-in runs through an external identity provider; the platform never stores
-your password. Access is role-based: owner, admin and member, in an
-organization and again on each of its projects. One matrix decides every
-project verdict, enforced server-side on every internal call rather than in
-the browser.
+On the hosted service, sign-in runs through an external identity provider; the
+platform never stores your password. For self-hosted deployments using built-in
+accounts, passwords are salted and hashed using Argon2id. Access is role-based:
+owner, admin and member, in an organization and again on each of its projects.
+One matrix decides every project verdict, enforced server-side on every internal
+call rather than in the browser.
 
 API tokens are long-lived and organization-scoped. A token is shown once, at
 creation, and stored only as a SHA-256 hash, so a database read cannot recover
@@ -79,9 +80,10 @@ credential, so no service surface is exposed to the public internet.
 
 ## Payments
 
-Card data is handled entirely by Stripe, a PCI-DSS Level 1 provider. We never
-see or store your card number; the platform stores which plan you are on, and
-Stripe holds your invoices.
+Currently, every organization is on the Hobby plan at no charge and no payment
+details are collected. Any future paid card processing will be handled entirely
+by Stripe, a PCI-DSS Level 1 provider. We never see or store your card number;
+the platform stores which plan you are on, and Stripe holds your invoices.
 
 ## Audit
 

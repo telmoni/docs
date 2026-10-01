@@ -9,7 +9,7 @@ The customer documentation site for Telmoni ([docs.telmoni.com](https://docs.tel
 - **Document only what a user can reach:**
   - **Covered:** sign-in; self-hosting (Docker Compose, Kubernetes, the console agent, configuration, production); organizations and projects, members and roles, the audit log; notifications and connectors; the CLI, the SDKs, API keys, the read-only `/v1` API and the error catalog; account settings and privacy; billing (the hosted service only, per organization: every organization is on the Hobby plan, with no usage limits and nothing for sale); the legal pages.
   - **Never:** the retired observability product (services, SLOs, alerts, incidents, metrics, logs, traces, ingest), or anything not built yet.
-  - **A route is not a feature:** check `web/app` in `telmoni/telmoni` that a user can reach it. Account export has a route but no console surface, so it is not documented.
+  - **A route is not a feature:** check `web/app` in `telmoni/telmoni` that a user can reach it. Organization export has a server route for owners and admins but no console surface, so it is not documented.
   - **Claim only what a diff could disprove:** describe mechanisms, never outcomes ("tamper-resistant", "never leaks", "guaranteed").
 
 ## Where Things Live
