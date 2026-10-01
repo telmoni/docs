@@ -47,6 +47,10 @@ const fonts = [
 export default defineConfig({
   site,
   base,
+  redirects: {
+    "/privacy-policy": "/legal/privacy-policy/",
+    "/terms-of-service": "/legal/terms-of-service/",
+  },
   fonts,
   integrations: [
     starlight({
