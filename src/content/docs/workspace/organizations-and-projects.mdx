@@ -1,0 +1,151 @@
+---
+title: "Organizations and projects"
+description: "How Telmoni organizes work: top-level organizations, projects, moving between them, and how to create, rename, transfer, and delete them."
+---
+
+Telmoni uses a two-tier tenancy model: **Organizations** and **Projects**.
+There are no teams.
+
+An **Organization** is the top-level tenant. It holds projects, organization-level
+members, organization settings, and a rolled-up audit log.
+
+A **Project** lives inside an organization. It holds API tokens, notification
+connectors (Slack, Discord, webhooks), in-app notifications, and project-specific
+audit records.
+
+A solo developer and an enterprise work the same way: an organization with one
+member and a project, or one with many members across multiple projects.
+
+## Your organizations and projects
+
+When you first sign up while sign-ups are open, Telmoni provisions:
+
+1. **An Organization**, with you as its **Owner**. Until named, the console
+   identifies it by your email address.
+2. **A Default Project** inside that organization, ready for your API tokens and
+   connectors.
+
+You can belong to multiple organizations at once: ones you own and ones you have
+been invited to. Your role in one organization does not dictate your role in
+another.
+
+### Roles at a glance
+
+Both organizations and projects use three roles: **Owner**, **Admin**, and
+**Member**. See [Roles and permissions](/workspace/roles/) for the full
+permissions matrix.
+
+- **Organization Owner**: Full access across all projects, project creation and
+  deletion, member management, organization settings, and organization
+  transfer/deletion.
+- **Organization Admin**: Can create projects, manage members, organization
+  settings, and audit logs. Operates as an admin across all projects. Cannot
+  delete projects, delete the organization, or transfer ownership.
+- **Organization Member**: Access is restricted to the specific projects they are
+  seated in. No organization-wide management powers.
+
+## Moving between them
+
+- **Project pages** live under the project's ID in the URL, such as
+  `/[projectId]/api-keys` or `/[projectId]/connectors`.
+- **Organization pages** live under `/organization`, including
+  `/organization/projects`, `/organization/members`,
+  `/organization/audit-log`, and `/organization/settings`.
+- **Account pages** live under `/account`, including `/account/settings`,
+  `/account/notifications`, and `/account/privacy`.
+- **Switch between projects and organizations** using the workspace switcher in
+  the console header and sidebar. The switcher displays your active
+  organization, the projects within it, and allows quick switching between
+  workspaces.
+
+## Projects
+
+### Creating a project
+
+An organization Owner or Admin can create a new project from the
+**Projects** page (`/organization/projects`) or directly from the project
+switcher:
+
+1. Select **Create project**.
+2. Provide a project name (up to 80 characters).
+3. The project is created immediately with its own isolated API keys and
+   connectors.
+
+### Renaming a project
+
+An Admin or Owner can rename a project from the project's **Settings** page
+(`/[projectId]/settings`).
+
+### Deleting a project
+
+Only the **Owner** can delete a project. Deletion is initiated from the
+**Danger zone** on the project's **Settings** page (`/[projectId]/settings`):
+
+- Deleting a project permanently deletes its API tokens and connectors.
+- Historical audit events for that project remain preserved in the organization's
+  append-only audit chain.
+
+### Transferring a project
+
+An organization Owner can transfer a project to an Admin:
+
+1. The Owner initiates a transfer to an organization Admin from the project's
+   settings.
+2. The Admin receives a transfer offer, which stands for **7 days**
+   (`OFFER_TTL_DAYS`).
+3. The Admin accepts the transfer into an organization they own.
+4. On acceptance:
+   - The project row moves into the new organization.
+   - Its API keys follow into the new organization.
+   - Project members stay seated on the project and are enrolled into the new
+     organization.
+   - The former owner remains seated as a project Admin.
+   - **Connectors are purged**: because connectors store webhook secrets and
+     third-party grants, they do not follow across tenant boundaries.
+
+## Organizations
+
+### Renaming an organization
+
+An Owner or Admin can rename an organization from **Organization Settings**
+(`/organization/settings`).
+
+### Transferring organization ownership
+
+An organization has exactly one Owner. The Owner can transfer ownership to any
+organization Admin:
+
+1. The Owner initiates an ownership transfer from the organization's **Members**
+   page or **Settings** page.
+2. The offer stands for **7 days**. The Owner may withdraw the offer at any time
+   before it is accepted.
+3. The designated Admin can accept or decline the offer.
+4. Upon acceptance:
+   - The accepting Admin becomes the new **Owner**.
+   - The former owner becomes an **Admin** in the organization.
+   - All projects, API keys, connectors, and audit histories stay intact.
+
+### Deleting an organization
+
+Only the **Owner** can delete an organization. Deletion is performed from the
+**Danger zone** in **Organization Settings** (`/organization/settings`):
+
+1. Request a 6-digit confirmation code, which is emailed to the Owner's address
+   and remains valid for 15 minutes.
+2. Enter the confirmation code.
+3. **Access ends immediately**: the organization enters `pending_deletion`, all
+   API keys stop authenticating, and member access ceases.
+4. **14-day restore window**: For 14 days (`RESTORE_WINDOW_SECONDS`), the Owner
+   can restore the organization from their account's **Privacy** page
+   (`/account/privacy`).
+5. After 14 days, the automated deletion sweep permanently purges the
+   organization, its projects, API keys, and resources.
+
+## Leaving an organization or project
+
+- **Leaving a project**: Members and Admins can leave a project from the
+  project's members view.
+- **Leaving an organization**: Members and Admins can leave an organization from
+  their account or organization settings.
+- The **Owner cannot leave** an active organization. To leave, the Owner must
+  either transfer ownership to an Admin or delete the organization.

@@ -1,0 +1,136 @@
+---
+title: "Security"
+description: "How the hosted service isolates tenants, holds secrets, controls access, encrypts traffic, audits changes and deletes data, and how to report a vulnerability."
+---
+
+The platform holds your organization, the people in it, and the record of what
+they did. It runs no workload for you, and the only credentials it holds on
+your behalf are the destinations you connected for it to post to, so
+isolation and audit are most of the security surface. This page describes the
+controls as enforced today.
+
+## Tenant isolation
+
+The organization is the unit of tenancy, the thing that pays, and the only
+container: it holds your projects, members, API tokens and connected
+destinations. Tenant-scoped tables enforce row-level security in the database,
+with no exemption for the role that owns the table, keyed to the one
+organization the transaction is bound to, which is set from your verified
+session and never from a request body. A query not bound to a tenant matches
+no rows, so the failure mode is empty rather than wide. Your own account's
+rows (your identity, sessions and confirmation codes) are isolated the same
+way, to the person your verified session names.
+
+The small set of cross-tenant maintenance paths (the deletion and retention
+sweeps) run through a dedicated database role with its own policy, so a bulk
+job cannot silently widen into tenant reads. Those claims are proved in the
+test suite as a role without bypass, because a superuser sees every row and
+would make a broken policy look correct.
+
+## Secrets
+
+The platform asks for no password and no API key of yours. The credentials it
+holds on your behalf are the channel grants you authorise through Slack or
+Discord (issued by the vendor to one channel you pick in their own dialog,
+never typed, revocable from either end) and, if you connect a webhook, the
+HTTPS endpoint you give us together with a signing secret we mint for it and
+show you exactly once.
+
+Each of those is sealed with AES-256-GCM before it reaches a row, under a key
+that is that row's alone, with the row's own identifier bound into the
+ciphertext so one row's value cannot be moved to another. The key that wraps
+those row keys is held in a managed key service and never in the database or
+the service's environment, so a database backup or a replica read yields
+ciphertext, and every time one is opened the key service records it. None of
+it is listed back to you (a webhook shows as its host alone), none of it is
+logged, and it is opened only at the moment we post on your behalf.
+
+A webhook is the one place you name a host we then connect to, so that host is
+checked before we store it, again before we dial it, and once more when its
+name resolves: nothing private, local or belonging to the cloud we run in can
+be reached through it, and a redirect is never followed. Every delivery to it
+is signed over the exact bytes sent, so your receiver can verify it came from
+us.
+
+Redaction is mechanical, not convention: the types that carry our own service
+credentials mask themselves in logs and errors by construction, so a stray
+debug print cannot leak one.
+
+## Access control
+
+Sign-in runs through an external identity provider; the platform never stores
+your password. Access is role-based: owner, admin and member, in an
+organization and again on each of its projects. One matrix decides every
+project verdict, enforced server-side on every internal call rather than in
+the browser.
+
+API tokens are long-lived and organization-scoped. A token is shown once, at
+creation, and stored only as a SHA-256 hash, so a database read cannot recover
+one and neither can we. Rotate or revoke at any time; both are audited. The
+browser never holds one: the console reaches services through the server, and
+the token surface exists for your own code.
+
+## Encryption in transit
+
+Traffic to the platform is served over TLS. The browser never talks to a
+backend service directly. Every request goes through the console's server,
+which reaches internal services over the private network carrying a service
+credential, so no service surface is exposed to the public internet.
+
+## Payments
+
+Card data is handled entirely by Stripe, a PCI-DSS Level 1 provider. We never
+see or store your card number; the platform stores which plan you are on, and
+Stripe holds your invoices.
+
+## Audit
+
+Every mutation commits in the same database transaction as its audit record,
+attributed to the acting principal, so a failed audit write fails the
+operation. The audit log is append-only and retained by policy, including
+through organization and account deletion.
+
+## Data deletion
+
+Deleting an organization closes it at once and cancels its subscription, keeps
+it whole for 14 days in which its owner can restore it, and then runs an
+ordered, idempotent cascade across every service: its projects and
+memberships, pending invitations, API tokens, connected channels and endpoints
+and the notices queued for them. Deleting your account erases your sessions
+and your record at the identity provider, together with every organization you
+own alone, with no restore window. Per-schema tests pin that nothing is left
+behind. The audit log and the billing history we are required to keep for tax
+records are the deliberate exceptions.
+
+Deleting your account also removes the memberships you hold in other
+organizations, writes each removal into that organization's audit chain, so
+nobody loses a member silently, and rewrites the notices in their feeds that
+named you. Both deletions are idempotent and a sweep retries them, so a
+partial failure finishes rather than stranding rows.
+
+## What we hold
+
+Your sign-in identity from the identity provider, your projects and who
+belongs to them at what role, the API tokens you minted, the chat channels and
+webhook endpoints you connected and the notices we sent to them, your audit
+trail, and your billing history. The platform runs no workload on your behalf,
+so everything here is either something you told us or the record of something
+you did.
+
+## Reporting a vulnerability
+
+If you find a security issue, report it privately by email to
+hello@telmoni.com so we can fix it before it is disclosed. We aim to
+acknowledge reports promptly and will credit reporters who ask.
+
+We welcome good-faith research. Test only against your own organization and
+data: do not access, modify, or exfiltrate another tenant's information,
+degrade the service for others, or run denial-of-service or high-volume scans.
+Research that stays within these bounds is authorized and we will not pursue
+action over it.
+
+## Related documents
+
+- [Privacy Policy](/legal/privacy-policy/)
+- [Terms of Service](/legal/terms-of-service/)
+- [Subprocessors](/legal/subprocessors/)

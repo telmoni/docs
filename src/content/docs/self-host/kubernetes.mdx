@@ -1,0 +1,207 @@
+---
+title: Kubernetes & Helm
+description: Deploy and scale Telmoni on Kubernetes using the official production Helm chart.
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Telmoni provides an enterprise-ready Helm chart located in `deploy/charts/telmoni`. It packages the core backend server, the Next.js web console, automated migration hook jobs, partition rotation cron jobs, security network policies, and an optional in-cluster Ollama vector embeddings deployment.
+
+## Architecture on Kubernetes
+
+```mermaid
+flowchart TD
+    Ingress["Gateway API / Ingress Controller"] --> WebSvc["Service: web (Port 3000)"]
+    WebSvc --> WebPods["Deployment: web (Next.js BFF)"]
+
+    WebPods --> ServerSvc["Service: server (Port 8082)"]
+    ServerSvc --> ServerPods["Deployment: server (Rust API)"]
+
+    WebPods --> Redis[("Redis Cluster / StatefulSet")]
+
+    ServerPods --> Postgres[("PostgreSQL 17 + pgvector")]
+    ServerPods --> EmbeddingsSvc["Service: embeddings (Port 11434)"]
+    EmbeddingsSvc --> EmbeddingsPod["Deployment: embeddings (Ollama)"]
+
+    HookJob["Pre-install / Pre-upgrade Job: migrator"] -.->|Runs DDL & Grants| Postgres
+    RotateCron["CronJob: rotate (telmoni rotate)"] -.->|Weekly partition maintenance| Postgres
+```
+
+---
+
+## Prerequisites
+
+Before deploying the Helm chart, ensure you have:
+- A Kubernetes cluster (v1.28 or newer)
+- [Helm](https://helm.sh/docs/intro/install/) (v3.12 or newer)
+- A PostgreSQL 17 database instance with the `vector` extension installed
+- A Redis 7 instance (standalone or clustered)
+- Gateway API CRDs or an Ingress controller (e.g., Traefik, NGINX Ingress, or GKE Gateway)
+
+---
+
+## Deployment steps
+
+<Steps>
+
+1. **Prepare namespace and Kubernetes secrets**
+
+   Create a dedicated namespace:
+
+   ```bash
+   kubectl create namespace telmoni
+   ```
+
+   Generate random 32-byte tokens for the service communication secret and session cookie seal:
+
+   ```bash
+   SERVICE_SECRET=$(openssl rand -hex 32)
+   AUTH_SECRET=$(openssl rand -hex 32)
+   ```
+
+   Create the required Kubernetes secret objects:
+
+   ```bash
+   # 1. Server secrets
+   kubectl create secret generic server-secrets \
+     --namespace telmoni \
+     --from-literal=AUTH_DATABASE_URL="postgres://telmoni_auth:auth_pass@postgres.internal:5432/telmoni" \
+     --from-literal=NOTIFICATIONS_DATABASE_URL="postgres://telmoni_notif:notif_pass@postgres.internal:5432/telmoni" \
+     --from-literal=AGENT_DATABASE_URL="postgres://telmoni_agent:agent_pass@postgres.internal:5432/telmoni" \
+     --from-literal=SERVICE_SECRET="$SERVICE_SECRET" \
+     --from-literal=CONNECTOR_KEK="local:0000000000000000000000000000000000000000000000000000000000000000" \
+     --from-literal=ADMIN_EMAIL="admin@example.com" \
+     --from-literal=ADMIN_PASSWORD="initial_strong_admin_password"
+
+   # 2. Web console secrets
+   kubectl create secret generic web-secrets \
+     --namespace telmoni \
+     --from-literal=SERVICE_SECRET="$SERVICE_SECRET" \
+     --from-literal=AUTH_SECRET="$AUTH_SECRET" \
+     --from-literal=REDIS_URL="redis://redis.internal:6379"
+
+   # 3. Migrator secrets
+   kubectl create secret generic migrator-secrets \
+     --namespace telmoni \
+     --from-literal=MIGRATOR_DATABASE_URL="postgres://telmoni_migrator:migrator_pass@postgres.internal:5432/telmoni"
+   ```
+
+2. **Configure Helm values**
+
+   Create a custom `values-prod.yaml` file:
+
+   ```yaml
+   config:
+     environment: "production"
+     logLevel: "info"
+     appUrl: "https://telmoni.example.com"
+     authUrl: "https://telmoni.example.com"
+     allowSignUp: false
+     verifyEmail: false
+
+     # Optional AI Agent configuration
+     agent:
+       modelProvider: "anthropic" # or "openai"
+       model: "claude-sonnet-5"
+       # If embeddingsUrl is left empty and embeddings.enabled is true,
+       # the chart automatically routes to the in-cluster Ollama service.
+       embeddingsUrl: ""
+       embeddingsModel: "nomic-embed-text"
+
+   # In-cluster Ollama deployment for local embeddings
+   embeddings:
+     enabled: true
+     model: "nomic-embed-text"
+     resources:
+       requests:
+         cpu: "500m"
+         memory: "2Gi"
+       limits:
+         memory: "4Gi"
+
+   # Core backend server
+   server:
+     enabled: true
+     replicas: 2
+     resources:
+       requests:
+         cpu: "250m"
+         memory: "256Mi"
+       limits:
+         memory: "1Gi"
+
+   # Web console (Next.js)
+   web:
+     enabled: true
+     replicas: 2
+     resources:
+       requests:
+         cpu: "200m"
+         memory: "256Mi"
+       limits:
+         memory: "512Mi"
+
+   # High availability configurations
+   highAvailability:
+     enabled: true
+     podDisruptionBudget:
+       minAvailable: 1
+     autoscaling:
+       enabled: true
+       minReplicas: 2
+       maxReplicas: 10
+       targetCPUUtilizationPercentage: 80
+
+   # Database migration and partition maintenance
+   migrator:
+     enabled: true
+     hook:
+       enabled: true # Executes as a pre-install / pre-upgrade Helm hook
+     rotateSchedule: "0 3 * * 0" # Weekly partition rotation
+   ```
+
+3. **Install the Helm chart**
+
+   From your repository root, run `helm install`:
+
+   ```bash
+   helm install telmoni ./deploy/charts/telmoni \
+     --namespace telmoni \
+     --values values-prod.yaml
+   ```
+
+4. **Verify the installation**
+
+   Check the pods and migration hook execution:
+
+   ```bash
+   kubectl get pods -n telmoni
+   ```
+
+   Expected output:
+
+   ```text
+   NAME                               READY   STATUS      RESTARTS   AGE
+   telmoni-migrate-4a8f9              0/1     Completed   0          45s
+   embeddings-7d8b5c968f-9jx2l        1/1     Running     0          40s
+   server-68cfb6c59b-2n8vd            1/1     Running     0          35s
+   server-68cfb6c59b-7m4kf            1/1     Running     0          35s
+   web-5b6d9c878-8v1zq                1/1     Running     0          35s
+   web-5b6d9c878-k9x1w                1/1     Running     0          35s
+   ```
+
+</Steps>
+
+---
+
+## Kubernetes security & isolation
+
+The Telmoni Helm chart implements strict zero-trust defaults:
+
+- **Non-root enforcement**: Every container runs as UID `65532` (`runAsNonRoot: true`, `readOnlyRootFilesystem: true`, `drop: [ALL]`).
+- **NetworkPolicies**:
+  - `allow-embeddings-ingress`: Allows traffic to the Ollama vector embeddings pod *only* from pods matching label `app.kubernetes.io/name: server`.
+  - `allow-embeddings-egress`: Strictly limits embeddings egress to port 443 for initial model downloading, blocking all internal cluster scanning.
+  - `allow-server-to-embeddings`: Explicitly gates backend egress to the embeddings port `11434`.
+- **Pre-upgrade Migration Safety**: Migrations run as a Kubernetes `Job` annotated with `"helm.sh/hook": pre-install,pre-upgrade` with weight `-5`. If any database migration fails, the Helm deployment halts immediately before any server or web pods are updated.
+- **Partition Management**: A scheduled `CronJob` (`name: rotate`) runs `telmoni rotate` weekly to pre-create partition tables for the next quarter and prune expired audit tables.

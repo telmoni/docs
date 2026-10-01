@@ -1,0 +1,314 @@
+---
+// Custom theme and corners switcher component for Starlight.
+// Renders two segmented switch controls matching Telmoni web app (telmoni/web):
+// 1. Theme switch: System (Monitor), Light (Sun), Dark (Moon)
+// 2. Corners switch: Rounded (SquareRoundCorner), Sharp (Square)
+---
+
+<div class="theme-corners-controls">
+  <!-- Hidden select to maintain full compatibility with Starlight's internal theme system -->
+  <starlight-theme-select style="display: none;">
+    <select aria-hidden="true" tabindex="-1">
+      <option value="auto">Auto</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </starlight-theme-select>
+
+  <!-- Segmented Theme Switch matching telmoni/web/components/theme-toggle.tsx -->
+  <telmoni-theme-switch>
+    <div class="switch-track" role="group" aria-label="Theme">
+      <button
+        type="button"
+        data-theme="auto"
+        aria-label="System theme"
+        title="System theme"
+        aria-pressed="false"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect width="20" height="14" x="2" y="3" rx="2"></rect>
+          <line x1="8" x2="16" y1="21" y2="21"></line>
+          <line x1="12" x2="12" y1="17" y2="21"></line>
+        </svg>
+      </button>
+      <button
+        type="button"
+        data-theme="light"
+        aria-label="Light theme"
+        title="Light theme"
+        aria-pressed="false"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+      </button>
+      <button
+        type="button"
+        data-theme="dark"
+        aria-label="Dark theme"
+        title="Dark theme"
+        aria-pressed="false"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+      </button>
+    </div>
+  </telmoni-theme-switch>
+
+  <!-- Segmented Corners Switch matching telmoni/web/components/corners-toggle.tsx -->
+  <telmoni-corners-switch>
+    <div class="switch-track" role="group" aria-label="Corners">
+      <button
+        type="button"
+        data-corner="rounded"
+        aria-label="Rounded corners"
+        title="Rounded corners"
+        aria-pressed="true"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M21 11a8 8 0 0 0-8-8"></path>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        </svg>
+      </button>
+      <button
+        type="button"
+        data-corner="sharp"
+        aria-label="Sharp corners"
+        title="Sharp corners"
+        aria-pressed="false"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect width="18" height="18" x="3" y="3"></rect>
+        </svg>
+      </button>
+    </div>
+  </telmoni-corners-switch>
+</div>
+
+<script is:inline>
+  // Immediate state synchronization before first paint to prevent layout flash
+  (() => {
+    try {
+      const storedTheme = localStorage.getItem("starlight-theme") || "auto";
+      document.querySelectorAll("telmoni-theme-switch").forEach((sw) => {
+        sw.querySelectorAll("button[data-theme]").forEach((btn) => {
+          btn.setAttribute("aria-pressed", (btn.getAttribute("data-theme") === storedTheme).toString());
+        });
+      });
+
+      const isSharp = localStorage.getItem("telmoni-corners") === "sharp";
+      document.querySelectorAll("telmoni-corners-switch").forEach((sw) => {
+        const roundedBtn = sw.querySelector('button[data-corner="rounded"]');
+        const sharpBtn = sw.querySelector('button[data-corner="sharp"]');
+        if (roundedBtn && sharpBtn) {
+          roundedBtn.setAttribute("aria-pressed", (!isSharp).toString());
+          sharpBtn.setAttribute("aria-pressed", isSharp.toString());
+        }
+      });
+    } catch (e) {}
+  })();
+</script>
+
+<script>
+  type Theme = "auto" | "dark" | "light";
+  const THEME_STORAGE_KEY = "starlight-theme";
+  const CORNERS_STORAGE_KEY = "telmoni-corners";
+  const SHARP_CLASS = "theme-sharp";
+
+  function getPreferredColorScheme(): "light" | "dark" {
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+
+  function updateTheme(theme: Theme) {
+    const resolved = theme === "auto" ? getPreferredColorScheme() : theme;
+    document.documentElement.dataset.theme = resolved;
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme === "auto" ? "" : theme);
+    } catch {}
+
+    document.querySelectorAll("telmoni-theme-switch").forEach((sw) => {
+      sw.querySelectorAll<HTMLButtonElement>("button[data-theme]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", (btn.getAttribute("data-theme") === theme).toString());
+      });
+    });
+
+    // Also update any internal Starlight select
+    document.querySelectorAll("starlight-theme-select select").forEach((sel) => {
+      if (sel instanceof HTMLSelectElement) {
+        sel.value = theme;
+      }
+    });
+  }
+
+  function updateCorners(next: "rounded" | "sharp") {
+    const isSharp = next === "sharp";
+    document.documentElement.classList.toggle(SHARP_CLASS, isSharp);
+    try {
+      localStorage.setItem(CORNERS_STORAGE_KEY, next);
+    } catch {}
+
+    document.querySelectorAll("telmoni-corners-switch").forEach((sw) => {
+      const roundedBtn = sw.querySelector('button[data-corner="rounded"]');
+      const sharpBtn = sw.querySelector('button[data-corner="sharp"]');
+      if (roundedBtn && sharpBtn) {
+        roundedBtn.setAttribute("aria-pressed", (!isSharp).toString());
+        sharpBtn.setAttribute("aria-pressed", isSharp.toString());
+      }
+    });
+  }
+
+  // React to OS scheme change if on auto
+  window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    const current = localStorage.getItem(THEME_STORAGE_KEY);
+    if (!current || current === "auto") {
+      updateTheme("auto");
+    }
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === THEME_STORAGE_KEY) {
+      updateTheme((e.newValue as Theme) || "auto");
+    } else if (e.key === CORNERS_STORAGE_KEY) {
+      updateCorners(e.newValue === "sharp" ? "sharp" : "rounded");
+    }
+  });
+
+  class TelmoniThemeSwitch extends HTMLElement {
+    constructor() {
+      super();
+      const current = (localStorage.getItem(THEME_STORAGE_KEY) as Theme) || "auto";
+      this.querySelectorAll<HTMLButtonElement>("button[data-theme]").forEach((btn) => {
+        const theme = btn.getAttribute("data-theme") as Theme;
+        btn.setAttribute("aria-pressed", (theme === current).toString());
+        btn.addEventListener("click", () => updateTheme(theme));
+      });
+    }
+  }
+
+  class TelmoniCornersSwitch extends HTMLElement {
+    constructor() {
+      super();
+      const isSharp = localStorage.getItem(CORNERS_STORAGE_KEY) === "sharp";
+      const roundedBtn = this.querySelector<HTMLButtonElement>('button[data-corner="rounded"]');
+      const sharpBtn = this.querySelector<HTMLButtonElement>('button[data-corner="sharp"]');
+
+      if (roundedBtn && sharpBtn) {
+        roundedBtn.setAttribute("aria-pressed", (!isSharp).toString());
+        sharpBtn.setAttribute("aria-pressed", isSharp.toString());
+
+        roundedBtn.addEventListener("click", () => updateCorners("rounded"));
+        sharpBtn.addEventListener("click", () => updateCorners("sharp"));
+      }
+    }
+  }
+
+  customElements.define("telmoni-theme-switch", TelmoniThemeSwitch);
+  customElements.define("telmoni-corners-switch", TelmoniCornersSwitch);
+</script>
+
+<style>
+  .theme-corners-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Segmented switch styling matching telmoni/web/components/segmented-switch.tsx */
+  .switch-track {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border-radius: var(--radius-menu, 0.75rem);
+    border: 1px solid var(--sl-color-hairline, var(--border));
+    background: transparent;
+  }
+
+  .switch-track button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem; /* size-7 / 28px in telmoni/web */
+    height: 1.75rem;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--sl-color-gray-3, var(--muted-foreground));
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .switch-track button:hover {
+    color: var(--sl-color-white, var(--foreground));
+  }
+
+  .switch-track button[aria-pressed="true"] {
+    background-color: var(--sl-color-gray-6, var(--secondary));
+    color: var(--sl-color-white, var(--foreground));
+  }
+
+  :global(.theme-sharp) .switch-track,
+  :global(html.theme-sharp) .switch-track {
+    border-radius: 0 !important;
+  }
+</style>

@@ -1,0 +1,56 @@
+# ── Build output & caches ──────────────────────────────────────────────────────
+dist/
+.astro/
+.vite/
+*.tsbuildinfo
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.local.example
+.envrc
+!.envrc.example
+
+# Certificates & private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+/logs/
+
+# ── AI & editor tooling ───────────────────────────────────────────────────────
+.claude/
+.aider*
+.cursor/
+.vscode/
+.idea/
+.zed/
+.fleet/
+*.swp
+*.swo
+*.orig
+*.rej
+*.bak
+?*~
+
+# ── Scratch & local notes ─────────────────────────────────────────────────────
+scratch/
+
+# ── OS-specific files ─────────────────────────────────────────────────────────
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini

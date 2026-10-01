@@ -1,0 +1,120 @@
+---
+title: Configuration Reference
+description: Complete reference of all environment variables for the Telmoni core server, web console, and sidecars.
+---
+
+Telmoni uses environment variables for all configuration. When deployed via Docker Compose or Kubernetes, these variables are passed to the container runtimes via `.env` files or Secret/ConfigMap resources.
+
+## Core server & networking
+
+These variables configure the Rust backend service (`telmoni serve`).
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `8082` | HTTP listen port for the backend server. |
+| `APP_URL` | `http://localhost:3000` | The public origin of the web console. Used to format invitation links, password reset emails, and OAuth callback URLs. |
+| `SERVICE_SECRET` | *Required* | A cryptographically secure secret shared between the web console and the core server. Used to sign and authenticate internal service calls. |
+| `SERVICE_SECRET_NEXT` | *Optional* | A secondary service secret accepted alongside `SERVICE_SECRET`. Used for zero-downtime secret rotation. |
+| `DATABASE_CA_CERT` | *Optional* | PEM-encoded certificate authority used to verify TLS connections to managed PostgreSQL instances. |
+| `ALLOW_TEST_SESSION` | `false` | When `true`, exposes the `POST /test/session` route for end-to-end testing. Refused at boot in Kubernetes production environments. |
+| `DELETION_TAIL_BUDGET_MS` | `8000` | Wall-clock time budget in milliseconds for inline deletion sagas before returning an HTTP `202 Accepted` to the caller and handing off the remaining purges to the background sweep task. |
+
+---
+
+## Web console (Next.js BFF)
+
+These variables configure the web console container (`telmoni/web`).
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `3000` | HTTP listen port for the Next.js console. |
+| `SERVER_URL` | *Required* | The internal URL of the core backend server (e.g., `http://server:8082`). |
+| `AUTH_SECRET` | *Required* | A secret key of at least 32 bytes (generate with `openssl rand -hex 32`) used to seal, encrypt, and decrypt browser session cookies. |
+| `AUTH_URL` | *Required* | The public URL of the application. In production, must begin with `https://` (or loopback `http://localhost`). |
+| `NEXT_PUBLIC_APP_URL` | *Required* | The public origin of the console, exposed to browser clients for client-side routing. |
+| `REDIS_URL` | *Required* | Connection string for Redis (e.g., `redis://redis:6379`). Used for rate limiting and fast session checks. |
+| `REDIS_CA_CERT` | *Optional* | PEM-encoded CA certificate for validating TLS connections to Redis (`rediss://`). |
+| `COMPANY_NAME` | *Optional* | Custom organization name displayed in the console footer and notification emails. |
+| `SUPPORT_EMAIL` | *Optional* | Contact address displayed on error pages and system transactional emails. |
+| `LEGAL_URL` | *Optional* | External URL hosting custom Terms of Service and Privacy Policy documents. |
+
+---
+
+## Database connection pools (Multi-role architecture)
+
+In simple deployments, all database variables can point to the same PostgreSQL connection string. In hardened production environments, each module connects as its own least-privilege PostgreSQL role:
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `AUTH_DATABASE_URL` | *Required* | PostgreSQL DSN for identity, accounts, organizations, projects, and RBAC tables (role: `auth`). |
+| `NOTIFICATIONS_DATABASE_URL` | *Required* | PostgreSQL DSN for notification feeds, delivery queues, and webhook subscriptions (role: `notifications`). |
+| `AGENT_DATABASE_URL` | *Optional* | PostgreSQL DSN for document embeddings, vector chunks, and search indexing (role: `agent`). Required if the AI agent is enabled. |
+| `MIGRATOR_DATABASE_URL` | *Required for migrations* | PostgreSQL DSN for applying DDL migrations and role hardening (role: `migrator` or superuser). |
+
+---
+
+## Authentication & access control
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `ALLOW_SIGN_UP` | `false` | When `false`, public self-registration is disabled; new users can only join by accepting an email invitation from an existing Organization Admin or Owner. |
+| `VERIFY_EMAIL` | `false` | When `true`, newly registered users must verify their email address via a confirmation link before accessing the console. Requires `SMTP_URL`. |
+| `DISABLE_LOGIN_FORM` | `false` | Disables username and password authentication, forcing all users to sign in via OpenID Connect (SSO). |
+| `ADMIN_EMAIL` | *Optional* | Seeds the primary Organization Owner account on the first migration run. |
+| `ADMIN_PASSWORD` | *Optional* | Password for the initial administrator account. |
+
+---
+
+## Single Sign-On (OpenID Connect / OIDC)
+
+Telmoni supports enterprise Identity Providers (Okta, Keycloak, Microsoft Entra ID, Google Workspace, Authentik) using standard OpenID Connect:
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `OIDC_ISSUER` | *Optional* | The base discovery URL of your OIDC provider (must serve `/.well-known/openid-configuration`). |
+| `OIDC_CLIENT_ID` | *Optional* | The registered OAuth2 client identifier. |
+| `OIDC_CLIENT_SECRET` | *Optional* | The registered OAuth2 client secret. |
+| `OIDC_REDIRECT_URI` | `http://localhost:3000/auth/callback` | The callback URL registered with your identity provider. |
+| `OIDC_NAME` | `"SSO"` | The label displayed on the login button (e.g., `"Continue with Okta"`). |
+| `OIDC_ALLOW_SIGN_UP` | `true` | Allows first-time OIDC sign-ins to automatically provision a user account. |
+| `OIDC_ALLOW_INSECURE_EMAIL_LOOKUP` | `false` | When `true`, links an OIDC identity to an existing account if the email matches, even if the account was created with a password. |
+
+---
+
+## Outbound email (SMTP)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `SMTP_URL` | *Optional* | SMTP connection URI (e.g., `smtp://user:pass@smtp.mailgun.org:587`). If unset, emails are written to standard output logs instead of being sent. |
+| `MAIL_FROM` | `Telmoni <no-reply@localhost>` | RFC 5322 `From:` address for invitations, verifications, and alert notifications. |
+| `SUPPORT_EMAIL` | *Optional* | Address referenced when recipients require administrative assistance. |
+
+---
+
+## Connectors & secret encryption
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `CONNECTOR_KEK` | *Required for connectors* | The Key Encryption Key used to seal integration credentials and secrets at rest. Format: `local:<64-hex-characters>` or a Google Cloud KMS key resource identifier. |
+| `SLACK_CLIENT_ID` | *Optional* | Client ID for the Telmoni Slack application. |
+| `SLACK_CLIENT_SECRET` | *Optional* | Client Secret for the Slack application. |
+| `SLACK_SIGNING_SECRET` | *Optional* | Secret used to verify HMAC signatures of inbound Slack event webhooks. |
+| `DISCORD_CLIENT_ID` | *Optional* | Application ID for the Telmoni Discord bot. |
+| `DISCORD_CLIENT_SECRET` | *Optional* | Client Secret for Discord OAuth handshakes. |
+
+---
+
+## AI Agent & Vector Search
+
+The embedded AI assistant uses 768-dimensional embeddings to query project metadata, audit histories, and documentation.
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `AGENT_MODEL_PROVIDER` | *Optional* | Model provider protocol: `anthropic` or `openai`. (OpenAI protocol supports OpenAI, Gemini compatible endpoints, Ollama, and vLLM). |
+| `AGENT_MODEL_URL` | *Optional* | Base API URL (e.g., `http://ollama:11434/v1` or `https://api.openai.com/v1`). |
+| `AGENT_MODEL` | `claude-sonnet-5` (Anthropic) | The LLM model identifier (e.g., `claude-3-5-sonnet-latest`, `gpt-4o`, `llama3.2`). |
+| `AGENT_MODEL_API_KEY` | *Optional* | Bearer API token for hosted model providers. |
+| `EMBEDDINGS_URL` | `http://ollama:11434/v1` | URL for the OpenAI-compatible vector embedding endpoint. |
+| `EMBEDDINGS_MODEL` | `nomic-embed-text` | Embedding model identifier. Vector columns are fixed at 768 dimensions. |
+| `EMBEDDINGS_API_KEY` | *Optional* | API token for the embeddings provider. |
+| `DOCS_CORPUS_URL` | `https://docs.telmoni.com/llms-full.txt` | Remote documentation corpus ingested for the agent's contextual knowledge base. Set to `off` to disable documentation indexing. |

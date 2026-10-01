@@ -1,0 +1,45 @@
+---
+title: "Introduction"
+description: "What Telmoni is today, core architecture, and navigation guide."
+---
+
+Telmoni provides resilient monitoring infrastructure for scheduled background jobs,
+pipelines, and autonomous AI agents. These documentation pages describe the open
+core platform, console interface, and HTTP API as implemented today.
+
+## Platform capabilities
+
+Telmoni open core provides the foundational workspace and operational substrate:
+
+- **[Self-hosted deployment](/self-host/overview/)**: Run the complete platform
+  on your own infrastructure using [Docker Compose](/self-host/docker-compose/) or
+  Kubernetes, backed by PostgreSQL 17 with `pgvector` and Redis 7.
+- **[Organizations and projects](/workspace/organizations-and-projects/)**: A
+  clean two-tier tenancy model. Top-level organizations encapsulate projects,
+  organization-level settings, and rolled-up audit events. Projects isolate API
+  keys, notification connectors, and execution environments.
+- **[Members and roles](/workspace/roles/)**: Role-based access control with
+  three clear roles—**Owner**, **Admin**, and **Member**—governing both
+  organization administration and project resources.
+- **[Audit log](/workspace/audit-log/)**: Tamper-evident audit logging linking
+  every state mutation into a cryptographic SHA-256 hash chain, verified nightly
+  by background sweeps.
+- **[Notifications and connectors](/integrations/notifications/)**: Real-time
+  feed updates and fan-out dispatch to [Slack, Discord](/integrations/slack-and-discord/),
+  and signed [Webhooks](/integrations/webhooks/).
+- **[API keys and /v1 API](/api/api-keys/)**: Scoped `telmoni_` project tokens
+  with zero-downtime 24-hour rotation grace periods, authenticating the
+  read-only [API](/api/reference/).
+
+## Where to start
+
+1. [Self-hosting overview](/self-host/overview/): Architecture, hardware specifications,
+   and deployment models.
+2. [Docker Compose quickstart](/self-host/docker-compose/): Deploying the full stack
+   in minutes on a single machine.
+3. [Signing up and signing in](/getting-started/sign-in/): Provisioning your initial
+   organization and default project.
+4. [Organizations and projects](/workspace/organizations-and-projects/): Workspace
+   tenancy, project isolation, and lifecycle management.
+5. [Members and invitations](/workspace/members/): Inviting collaborators
+   and managing roles.

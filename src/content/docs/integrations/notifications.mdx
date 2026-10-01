@@ -1,0 +1,48 @@
+---
+title: "Notifications"
+description: "What Telmoni records in activity feeds, where notices are displayed, and how notifications are dispatched to external destinations."
+---
+
+A notification is an event record describing an action or status update within
+a workspace: a member joining, or a connector state change. Every notice is
+stored durably in Telmoni before being dispatched to downstream destinations.
+
+## Notice types
+
+| Kind | Raised when |
+|---|---|
+| `member_added` | A user accepts an invitation to the workspace |
+| `connector_connected` | A Slack, Discord, or webhook connector finishes setup |
+| `connector_disconnected` | A connector destination becomes unreachable or repeatedly fails |
+| `organization_alert` | An operational alert directed to the organization Owner |
+
+## Where you read them
+
+- **Project feed**: The **Recent activity** section of each project's
+  **Overview** page surfaces project notices. Project Admins and Members can
+  read the feed.
+- **Organization feed**: The organization's **Overview** page displays
+  organization-level notices and alerts.
+- **Invitations**: Direct workspace invitations appear separately in the console
+  header bell and on your account's **Notifications** page
+  (`/account/notifications`).
+
+Selecting **Mark read** marks notices as read across the feed view.
+
+## Forwarding to external connectors
+
+Projects can forward notifications to third-party endpoints through connectors
+configured on the project's **Connectors** page (`/[projectId]/connectors`):
+
+- **[Slack and Discord](/integrations/slack-and-discord/)**: Direct channel
+  notifications for workspace awareness.
+- **[Webhooks](/integrations/webhooks/)**: HTTPS POST requests with HMAC-SHA256
+  signatures delivered directly to your own infrastructure.
+
+Connectors deliver notices asynchronously. A temporary failure or network outage
+on an external service retries without losing the underlying notification record.
+
+## Retention
+
+- **Feed notices**: Retained for **90 days** (`FEED_RETENTION_DAYS`).
+- **Connector delivery logs**: Kept for **30 days** (`DELIVERY_RETENTION_DAYS`).

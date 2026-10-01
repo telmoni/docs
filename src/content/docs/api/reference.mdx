@@ -1,0 +1,124 @@
+---
+title: "API reference"
+description: "The Telmoni read-only API: authentication, rate limits, and the public /v1 routes."
+---
+
+The Telmoni API is a read-only HTTP interface under `/v1`. Authenticated by a
+[project API token](/api/api-keys/), it provides programmatic access to
+organization metadata and roster details. There are currently no public write
+routes.
+
+## Base URL and authentication
+
+```text
+https://telmoni.com/v1
+```
+
+*(On a self-hosted instance, replace `https://telmoni.com` with your deployment's
+configured origin).*
+
+Authenticate all requests by including your project API token as a bearer token:
+
+```http
+Authorization: Bearer telmoni_...
+```
+
+Requests lacking a valid or live token return `401 Unauthorized` with a
+`WWW-Authenticate: Bearer` header:
+
+```json
+{ "error": "a live telmoni_ API token is required" }
+```
+
+## HTTP methods
+
+All routes accept `GET` and `HEAD`. Other methods return `405 Method Not Allowed`
+with an `Allow` header listing permitted methods.
+
+## Rate limits
+
+| Scope | Limit |
+|---|---|
+| Per API token | 600 requests / minute |
+| Per source IP address | 1,200 requests / minute |
+
+Exceeding either rate limit returns `429 Too Many Requests` along with a
+`Retry-After` header. See [Errors](/errors/).
+
+## `GET /v1/organization`
+
+Retrieves the organization associated with the presented token.
+
+### Response
+
+`200 OK` `application/json`
+
+```json
+{
+  "organization_id": "org_019a0b8c3f2e7d41",
+  "name": "Acme Corp",
+  "owner": {
+    "email": "you@example.com",
+    "display_name": "Sam Rivera"
+  }
+}
+```
+
+- `organization_id`: The unique, immutable identifier of the organization.
+- `name`: Display name of the organization, or `null` if not yet named.
+- `owner`: Details of the organization Owner (`email` and `display_name`).
+
+## `GET /v1/members`
+
+Returns the roster of members in the organization, listed with the Owner first,
+followed by members ordered by join date.
+
+### Response
+
+`200 OK` `application/json`
+
+```json
+{
+  "members": [
+    {
+      "id": "019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47",
+      "member_id": "user_01J...",
+      "email": "you@example.com",
+      "display_name": "Sam Rivera",
+      "role": "owner",
+      "created_at": "2026-09-01T12:00:00Z",
+      "is_owner": true,
+      "ownership_offer_expires_at": null
+    },
+    {
+      "id": "019a3d52-7b10-7c9e-a4f1-2d8e6b0c9a13",
+      "member_id": "user_01K...",
+      "email": "alex@example.com",
+      "display_name": null,
+      "role": "admin",
+      "created_at": "2026-09-10T09:30:00Z",
+      "is_owner": false,
+      "ownership_offer_expires_at": null
+    }
+  ]
+}
+```
+
+- `id`: Unique identifier of the membership record.
+- `member_id`: The user's system identifier (`user_...`).
+- `email`: Member's verified email address.
+- `display_name`: User's display name, or `null`.
+- `role`: The member's role (`owner`, `admin`, or `member`).
+- `created_at`: ISO-8601 UTC timestamp of when the member joined.
+- `is_owner`: Boolean flag indicating if this member is the organization Owner.
+- `ownership_offer_expires_at`: UTC timestamp indicating when an active ownership
+  transfer offer expires, or `null` if none is pending.
+
+## Errors
+
+Error responses are returned as RFC 9457 problem documents
+(`application/problem+json`) with structured error types. Full details and status
+codes are cataloged in [Errors](/errors/).
+
+If public API access is toggled off for your organization, requests respond with
+`503 Service Unavailable` and the `/errors/tenant/feature-off` problem type.

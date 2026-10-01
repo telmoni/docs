@@ -1,0 +1,198 @@
+---
+title: Webhooks
+description: Receiving and verifying a signed webhook. The body, the signature header, the replay window, choosing events, retries, the delivery log, rotation, and the addresses to allowlist.
+---
+
+A webhook is an HTTPS endpoint of yours that Telmoni posts a project's notices to
+as signed JSON. You connect one from the project's **Connectors** page
+(`/[projectId]/connectors`), choose which notices it receives, and it answers
+with a signing secret shown exactly once. This page is the receiver's side of that
+contract: what arrives, how to verify it, what your response means, and where it
+comes from.
+
+## What you receive
+
+One `POST` per notice, `Content-Type: application/json`, with a body of exactly
+this shape and nothing the notice did not carry:
+
+```json
+{
+  \"id\": \"019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47\",
+  \"kind\": \"member_added\",
+  \"title\": \"Sam joined\",
+  \"body\": \"Sam accepted your invitation.\",
+  \"sent_at\": \"2027-01-15T12:00:00Z\"
+}
+```
+
+Two headers matter. `Telmoni-Signature` is `t=<unix seconds>,v1=<hex>`: an
+HMAC-SHA256, keyed with your signing secret, over the string `{t}.{body}` where
+`body` is the exact bytes of the request. While a rotated secret is still
+working it carries a second `v1`, one per secret (see
+[Rotating the secret](#rotating-the-secret)). `Telmoni-Delivery-Id` is the same
+value as the body's `id`, and it is stable across every retry and every resend
+of one notice.
+
+## Verify the signature
+
+Read the raw body before anything parses it. The signature is over the bytes
+sent, and a body that has been parsed and re-serialised will not match. Then, in
+order:
+
+1. Split the header on commas into `t` and every `v1`.
+2. Refuse the delivery if `t` is more than five minutes from your clock.
+3. Compute HMAC-SHA256 with your secret over `{t}.{body}`.
+4. Accept the delivery if any `v1` matches it, compared in constant time.
+
+The scheme is the one Stripe uses, so a verifier you already have for Stripe
+needs only the header name and the secret changed.
+
+Node:
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+const REPLAY_TOLERANCE_SECS = 300;
+
+export function verifyTelmoniSignature(secret, header, rawBody) {
+  let t;
+  const candidates = [];
+  for (const part of header.split(",")) {
+    const [key, value] = part.split("=", 2);
+    if (key === "t") t = Number(value);
+    else if (key === "v1") candidates.push(value);
+  }
+  if (!Number.isInteger(t) || candidates.length === 0) return false;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - t) > REPLAY_TOLERANCE_SECS) return false;
+
+  const expected = createHmac("sha256", secret)
+    .update(`${t}.`)
+    .update(rawBody) // the exact bytes received, never a re-serialised parse
+    .digest();
+  return candidates.some((v1) => {
+    const given = Buffer.from(v1, "hex");
+    return given.length === expected.length && timingSafeEqual(given, expected);
+  });
+}
+```
+
+Python:
+
+```python
+import hmac, hashlib, time
+
+REPLAY_TOLERANCE_SECS = 300
+
+def verify_telmoni_signature(secret: str, header: str, raw_body: bytes) -> bool:
+    t, candidates = None, []
+    for part in header.split(","):
+        key, _, value = part.partition("=")
+        if key == "t":
+            t = value
+        elif key == "v1":
+            candidates.append(value)
+    try:
+        t = int(t)
+    except (TypeError, ValueError):
+        return False
+    if not candidates or abs(int(time.time()) - t) > REPLAY_TOLERANCE_SECS:
+        return False
+    expected = hmac.new(secret.encode(), f"{t}.".encode() + raw_body, hashlib.sha256).digest()
+    for v1 in candidates:
+        try:
+            if hmac.compare_digest(bytes.fromhex(v1), expected):
+                return True
+        except ValueError:
+            continue
+    return False
+```
+
+### Test your verifier before you trust it
+
+With the secret
+`whsec_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, the
+header
+
+```text
+t=1800000000,v1=396556d0e74d35a762e7d75d387e1a7dcb4c728ffcc9bc857830a03f13dd740f
+```
+
+is the correct signature over this body, byte for byte, at `t=1800000000`:
+
+```text
+{"id":"019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47","kind":"member_added","title":"Sam joined","body":"Sam accepted your invitation.","sent_at":"2027-01-15T12:00:00Z"}
+```
+
+A verifier that accepts that triple (standing at that timestamp) and refuses it
+with one byte of the body changed is correct. That secret is a published test
+fixture; a real one is minted per endpoint and never repeats.
+
+## The replay window
+
+Refuse any delivery whose `t` is more than five minutes from your own clock.
+That bounds how long a captured request stays useful to whoever captured it. It
+never refuses a delivery Telmoni meant to make: every attempt, including each
+retry, is signed at the moment it is sent, so a retry after a long backoff
+carries a fresh `t` and a fresh signature. `sent_at` in the body is the same
+instant, for your logs.
+
+## Choosing events
+
+A webhook receives every kind of notice unless you choose. On the Connectors
+page, pick **All events** or **Selected events** when you connect it, and
+change the choice later with **Events** on its row. **All events** includes
+kinds added after you connected; a selection is exactly the kinds you ticked. A
+change applies from the next notice. The body's `kind` is one of:
+
+| `kind` | Sent when |
+| --- | --- |
+| `member_added` | Someone accepted an invitation to the workspace. |
+| `connector_connected` | A destination was connected to the project. |
+| `connector_disconnected` | A destination stopped accepting notices. |
+
+Slack and Discord channels always receive every kind.
+
+## What your response means
+
+**Any 2xx** means delivered. Return it as soon as you have stored the event, and
+do your real work afterwards: the request has a ten-second budget, and work done
+inside it is work a slow database turns into a retry.
+
+**Anything else is retried**, up to five attempts: after 30 seconds, then 2, 8
+and 32 minutes, roughly three quarters of an hour in all. A `Retry-After`
+header is honoured as a floor (you can ask for longer, never for sooner), capped
+at a day. A 404 during your deploy and a 500 under your load both come back;
+Telmoni does not give up on your endpoint over one bad answer.
+
+**Except 410 Gone.** That status means what it says in the standard: the
+endpoint has left, permanently. One 410 disconnects the webhook at once and
+fails every notice queued for it. Do not return it from a path you are moving or
+a proxy you are reconfiguring; return 404 or 503 and let the retries carry you.
+A disconnected webhook is brought back by rotating its secret from the
+Connectors page.
+
+**Ten failed deliveries in a row** (ten notices, not ten attempts at one) also
+disconnect the endpoint, and the project's other channels are told. One success
+anywhere in that run resets the count. A resend from the delivery log does not
+count toward it.
+
+**Delivery is at-least-once.** A retry after a timeout you had actually served
+is a duplicate you will see, and so is a resend of something you already have.
+
+## Rotating the secret
+
+Rotate from the webhook's row on the **Connectors** page. A new secret is
+generated and displayed once.
+
+During rotation, Telmoni keeps both the old secret and the new secret active for
+a short overlap window, sending two `v1` signatures in the `Telmoni-Signature`
+header. This ensures you can deploy your application with the new secret
+without missing inbound deliveries.
+
+## Delivery logs and resending
+
+Every delivery attempt is stored for **30 days**. From the **Connectors** page,
+you can inspect past deliveries, view response status codes and timing, and
+manually trigger a **Resend** for any historical delivery.

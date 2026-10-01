@@ -1,0 +1,79 @@
+---
+title: "Privacy and deletion"
+description: "Managing active sessions, product analytics, organization restoration, and permanent account deletion."
+---
+
+Your account's **Privacy** page (`/account/privacy`) manages session security,
+analytics preferences, data retention, and account lifecycle.
+
+## Active sessions
+
+The **Active sessions** panel lists all devices currently authenticated to your
+account, including device information, operating system, IP address, and last
+active timestamp.
+
+You can terminate any remote session individually. To terminate your current
+session, sign out from the user menu.
+
+## Product analytics
+
+**Disabled by default.** When enabled, Telmoni collects basic operational page
+navigation events to identify errors and UX friction points. It never collects
+API tokens, credentials, or workspace payloads.
+
+## Deleting an organization
+
+Only an organization **Owner** can delete an organization. Deletion is initiated
+from the **Danger zone** in **Organization Settings**
+(`/organization/settings`):
+
+1. Request a 6-digit confirmation code, which is emailed to your address and
+   remains valid for 15 minutes.
+2. Enter the confirmation code to confirm deletion.
+3. Access ends immediately for all members, and all API keys stop functioning.
+
+### Restoring a deleted organization
+
+For **14 days** following deletion (`RESTORE_WINDOW_SECONDS`), the organization
+remains in a soft-deleted state (`pending_deletion`). During this window:
+
+- The organization appears under **Deleted organizations** on the Owner's
+  **Privacy** page (`/account/privacy`).
+- Selecting **Restore** reactivates the organization, restoring all projects,
+  members, API keys, and notification channels exactly as they were.
+
+After 14 days have elapsed, the automated deletion sweep permanently erases the
+organization, its projects, and all associated data.
+
+## Deleting your account
+
+Account deletion is permanent and performed from the **Danger zone** on your
+account's **Privacy** page (`/account/privacy`).
+
+### Ownership pre-check
+
+**Account deletion is blocked if you are the Owner of an organization containing
+other members.** You must either:
+- [Transfer ownership](/workspace/organizations-and-projects/#transferring-organization-ownership)
+  to an Admin.
+- Remove all other members from the organization.
+- Or delete the organization from its settings page.
+
+### Deletion procedure
+
+1. Select **Delete account** and request an email confirmation code.
+2. Enter the 6-digit confirmation code (valid for 15 minutes).
+3. Confirm permanent deletion.
+
+### What happens when your account is deleted
+
+- **Organizations you exclusively own**: Marked for immediate deletion and
+  permanently purged. There is no 14-day restore window for organizations
+  destroyed via account deletion.
+- **Other organizations you belong to**: You are removed from all other
+  organizations and projects. Workspace audit logs record your departure.
+- **Notifications**: Feed notices referencing your account are anonymized
+  (e.g., "A former member joined").
+- **Authentication**: Your password hash or identity provider association is
+  erased, your user record is purged, and all active sessions are terminated
+  immediately.

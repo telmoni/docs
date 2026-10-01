@@ -1,0 +1,81 @@
+---
+title: "Members and invitations"
+description: "Inviting people to an organization or project, accepting and declining, changing roles, removing members, and leaving."
+---
+
+Collaborators join an organization or project by invitation. An invitation grants
+a [role](/workspace/roles/) of **Admin** or **Member**.
+
+## Scope of an invitation
+
+Telmoni supports two invitation scopes:
+
+1. **Organization invitations**: Invited from the organization's **Members** page
+   (`/organization/members`). Grants an organization role (`Admin` or `Member`).
+   An invited Organization Admin gains administrative access across all projects
+   in the organization.
+2. **Project invitations**: Invited from a project's **Members** page
+   (`/[projectId]/members`). Grants access directly to that project as an
+   `Admin` or `Member` without granting organization-wide permissions.
+
+## Inviting someone
+
+An Owner or Admin can send invitations:
+
+1. Navigate to the **Members** page of the organization or project.
+2. Enter the recipient's email address and choose a role (**Admin** or
+   **Member**).
+3. Telmoni emails an invitation link, and the console displays the link once so
+   you can share it directly.
+
+**An invitation is created for any email address, whether or not they currently
+hold a Telmoni account.** Inviting someone never discloses whether the address is
+already registered.
+
+Invitations expire automatically after **7 days** (`OFFER_TTL_DAYS`).
+
+## Accepting or declining
+
+Invitations can be answered in two places:
+
+- **The console bell & notifications**: Pending invitations appear in the bell icon
+  in the console header and on your account's **Notifications** page
+  (`/account/notifications`). You can accept or decline directly without
+  leaving your current view.
+- **The email link**: Opens a verification view showing the organization or project
+  and the role granted. You must sign in or register with the exact email address
+  the invitation was sent to.
+
+Accepting an invitation records an audit event and posts a `member_added` notice
+to the workspace feed. Declining an invitation removes it immediately.
+
+## Withdrawing a pending invitation
+
+An Owner or Admin can withdraw a pending invitation at any time from the
+**Members** page by selecting **Withdraw** on its row. Withdrawn links are
+invalidated immediately.
+
+## Changing roles and removing members
+
+An Owner or Admin can change a member's role or remove them from the
+**Members** page:
+
+- **Role changes**: Changing between Admin and Member takes effect immediately
+  and is recorded in the audit log.
+- **Removing members**: Removing a member revokes their access immediately.
+- **The Owner cannot be removed or demoted**: The Owner's row is marked **Owner**
+  and carries no removal controls. To change the Owner, the current Owner must
+  initiate an [ownership transfer](/workspace/organizations-and-projects/#transferring-organization-ownership).
+
+## Leaving an organization or project
+
+- Members and Admins can leave a project or organization from the **Members**
+  page or workspace overview.
+- The Owner cannot leave until ownership is transferred to an Admin or the
+  organization is deleted.
+
+## Invitation limits
+
+An organization can send up to **20 invitations in any 24 hours** (including
+withdrawn ones). There is no hard limit on the total number of members in an
+organization.

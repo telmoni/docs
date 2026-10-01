@@ -1,0 +1,61 @@
+---
+title: "Slack and Discord"
+description: "Posting project notifications into Slack or Discord channels: installation, OAuth scopes, retries, and disconnection handling."
+---
+
+A Slack or Discord connector posts project [notifications](/integrations/notifications/)
+directly into a specified channel.
+
+Connectors are configured per project. Project **Owners** and **Admins** can
+connect and manage destinations from the project's **Connectors** page
+(`/[projectId]/connectors`). Project **Members** can view active connectors and
+their delivery histories.
+
+## Connecting a channel
+
+1. Open your project's **Connectors** page.
+2. Select **Connect** next to Slack or Discord.
+3. You will be directed to Slack or Discord's authorization screen. Choose the
+   destination workspace and target channel.
+4. Once authorized, you are redirected back to the **Connectors** page, and the
+   channel appears active.
+
+Authorization handshakes must be completed within 10 minutes.
+
+## Permissions and security
+
+Telmoni requests the minimal permissions required to post inbound messages:
+- **Slack**: `incoming-webhook`
+- **Discord**: `webhook.incoming`
+
+These permissions restrict Telmoni to posting messages into the exact channel
+selected. Telmoni cannot view chat messages, inspect other channels, or enumerate
+workspace members. All access credentials and webhook targets are stored
+encrypted at rest.
+
+## Delivery and retries
+
+Notices are sent immediately upon creation. If a delivery attempt fails due to a
+transient network error or provider rate limit:
+
+- Telmoni retries delivery up to **5 times** using exponential backoff with
+  jitter, up to a maximum delay of 24 hours.
+- If the provider responds with a `Retry-After` header, Telmoni respects the
+  requested delay.
+
+## Disconnection and breaker behavior
+
+If a destination endpoint is permanently removed (e.g., the channel is deleted,
+the incoming webhook is removed, or the Telmoni application is uninstalled from
+the workspace), Telmoni marks the connector as disconnected and dispatches a
+`connector_disconnected` event to the workspace feed.
+
+Removing the Telmoni application from a Slack workspace disconnects all channels
+connected to that Slack workspace. The event is recorded in the project's
+[audit log](/workspace/audit-log/) with Slack listed as the actor.
+
+## Disconnecting manually
+
+To remove a connection, select **Disconnect** on the connector's row on the
+**Connectors** page. Telmoni invalidates the local grant, informs the upstream
+vendor, and logs the action in the audit log.

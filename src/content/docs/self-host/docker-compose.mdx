@@ -1,0 +1,185 @@
+---
+title: Docker Compose Quickstart
+description: Deploy Telmoni in minutes using Docker Compose.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Docker Compose is the fastest way to get a production-ready Telmoni instance running on a single host. The stack bundles PostgreSQL 17 with `pgvector`, Redis 7 Alpine, the automated database migrator, the Rust core backend server, and the Next.js web console.
+
+## Prerequisites
+
+Before starting, ensure your host has the following tools installed:
+- [Docker Engine](https://docs.docker.com/engine/install/) (v24.0 or newer)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2.20 or newer)
+- `openssl` (for cryptographically secure secret generation)
+
+---
+
+## Deployment steps
+
+<Steps>
+
+1. **Obtain the Docker Compose configuration**
+
+   Clone the Telmoni repository or download the production compose specification:
+
+   ```bash
+   git clone https://github.com/telmoni/telmoni.git
+   cd telmoni
+   ```
+
+   The production compose file is located at `deploy/compose/docker-compose.yml`.
+
+2. **Generate secrets and configure environment variables**
+
+   Create a `.env` file in the project root:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Telmoni requires two cryptographic secrets to start:
+   - `SERVICE_SECRET`: A shared token used by the web console to sign and authenticate internal RPC calls to the backend server.
+   - `AUTH_SECRET`: A 32-byte secret used to seal and decrypt session cookies.
+   - `CONNECTOR_KEK`: The Key Encryption Key used to encrypt connector secrets and webhook tokens at rest.
+
+   Generate random values using `openssl`:
+
+   ```bash
+   # Generate 32-byte hex strings
+   openssl rand -hex 32
+   ```
+
+   Update your `.env` file with the generated secrets and set your initial administrator credentials:
+
+   ```sh
+   # Secrets
+   SERVICE_SECRET=f3b9c7e2a1d4... # Output from openssl rand -hex 32
+   AUTH_SECRET=8e6a1c5d0f2b...    # Output from openssl rand -hex 32
+   CONNECTOR_KEK=local:0000000000000000000000000000000000000000000000000000000000000000
+
+   # Public application URL (change if serving behind a domain or reverse proxy)
+   APP_URL=http://localhost:3000
+   AUTH_URL=http://localhost:3000
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+   # Database settings
+   POSTGRES_USER=telmoni
+   POSTGRES_PASSWORD=your_secure_db_password
+   POSTGRES_DB=telmoni
+
+   # Bootstrap initial administrator account (quickstart / setup only)
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD=your_super_secret_admin_password
+   ALLOW_SIGN_UP=false
+   VERIFY_EMAIL=false
+   ```
+
+   > [!NOTE]
+   > `ADMIN_EMAIL` and `ADMIN_PASSWORD` are intended **only for initial bootstrapping, local evaluation, and offline setups**. For production environments, we strongly recommend configuring an **OpenID Connect (OIDC)** identity provider and disabling username/password logins via `DISABLE_LOGIN_FORM=true`. See [Production Hardening & OIDC](/self-host/production/#identity--authentication-production-oidc-hardening).
+
+3. **Start the Telmoni stack**
+
+   Run the compose file in detached mode:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml up -d
+   ```
+
+   Docker Compose executes the services in sequence:
+   1. Starts `postgres` and `redis` and waits for their healthchecks to pass.
+   2. Launches the transient `migrate` container, which applies all schema DDL and table grants, then exits cleanly (`exit 0`).
+   3. Starts the `server` container on internal port `8082`.
+   4. Starts the `web` container on port `3000`.
+
+4. **Verify container health**
+
+   Check that all services are healthy and running:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml ps
+   ```
+
+   Expected output:
+
+   ```text
+   NAME                IMAGE                            COMMAND                  SERVICE    STATUS
+   telmoni-postgres    pgvector/pgvector:pg17           "postgres -c max_con…"   postgres   Up (healthy)
+   telmoni-redis       redis:7-alpine                   "redis-server --save…"   redis      Up (healthy)
+   telmoni-migrate     ghcr.io/telmoni/server:latest    "telmoni migrate"        migrate    Exited (0)
+   telmoni-server      ghcr.io/telmoni/server:latest    "telmoni serve"          server     Up (healthy)
+   telmoni-web         ghcr.io/telmoni/web:latest       "docker-entrypoint.s…"   web        Up
+   ```
+
+5. **Log in to the console**
+
+   Open your browser and navigate to `http://localhost:3000`. Log in with the `ADMIN_EMAIL` and `ADMIN_PASSWORD` you configured in your `.env` file. Upon your first login, Telmoni automatically creates your default Organization and primary Project.
+
+</Steps>
+
+---
+
+## Enabling local AI agent search (optional)
+
+Telmoni includes an AI context agent with vector similarity search. You can run embeddings and chat inference completely locally using Ollama without sending any data to external APIs.
+
+1. Start the stack with the `agent` profile:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml --profile agent up -d
+   ```
+
+2. Pull the embedding model into the persistent `ollama_models` volume:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml exec ollama ollama pull nomic-embed-text
+   ```
+
+3. Set the agent environment variables in your `.env` file:
+
+   ```sh
+   AGENT_MODEL_PROVIDER=openai
+   AGENT_MODEL_URL=http://ollama:11434/v1
+   AGENT_MODEL=llama3.2
+   EMBEDDINGS_URL=http://ollama:11434/v1
+   EMBEDDINGS_MODEL=nomic-embed-text
+   ```
+
+4. Restart the server container to apply the changes:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml restart server
+   ```
+
+---
+
+## Maintenance commands
+
+### Viewing live service logs
+
+```bash
+# Follow logs for the core backend server
+docker compose -f deploy/compose/docker-compose.yml logs -f server
+
+# Follow logs for the web console
+docker compose -f deploy/compose/docker-compose.yml logs -f web
+```
+
+### Rotating audit partitions
+
+The audit log uses monthly PostgreSQL partitions. To maintain the 4-month forward partition runway and drop tables beyond your retention policy, execute:
+
+```bash
+docker compose -f deploy/compose/docker-compose.yml run --rm migrate telmoni rotate
+```
+
+### Stopping the stack
+
+```bash
+# Stop containers (preserves database and redis volumes)
+docker compose -f deploy/compose/docker-compose.yml down
+
+# Stop containers and remove all persistent data (destructive)
+docker compose -f deploy/compose/docker-compose.yml down -v
+```

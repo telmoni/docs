@@ -1,0 +1,91 @@
+---
+title: "Errors"
+description: "How Telmoni reports errors on the API and in the console: problem documents (RFC 9457), error types, status codes, and non-problem answers."
+---
+
+Telmoni reports API and console errors using Problem Details for HTTP APIs
+([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457), sent as
+`application/problem+json`). Every error carries a stable URI `type` your code
+can branch on.
+
+## The shape of an error
+
+```json
+{
+  "type": "/errors/authz/insufficient-role",
+  "title": "insufficient role",
+  "status": 403,
+  "detail": "required admin, have member"
+}
+```
+
+- `type` is a URI that identifies the problem kind. It never changes between
+  deployments.
+- `title` is a short, human-readable summary of the problem type.
+- `status` is the HTTP status code, repeated inside the body.
+- `detail` is human-readable and explains this specific occurrence.
+- Additional keys may appear on specific error types, as noted below.
+
+## Error types
+
+| Type | Status | Means | Extra fields |
+|---|---|---|---|
+| `/errors/auth/unauthenticated` | 401 | You are not signed in, or sent no credential. | |
+| `/errors/auth/token-expired` | 401 | Your session has expired. Sign in again. | |
+| `/errors/auth/invalid-token` | 401 | The credential sent is not valid. | |
+| `/errors/auth/service-credential-rejected` | 401 | One of Telmoni's services refused another's credential. This is Telmoni's fault, not yours. | |
+| `/errors/auth/identity-unavailable` | 503 | Telmoni could not check who you are right now, because the identity provider's keys or its own identity service could not be reached. Try again shortly. | |
+| `/errors/auth/not-found` | 404 | The thing you named does not exist, or is not yours to see. `detail` says what kind of thing. | |
+| `/errors/auth/bad-request` | 400 | A value was not acceptable, such as a malformed email address. `detail` says which. | |
+| `/errors/auth/conflict` | 409 | It already exists, conflicts with something that does, or something is not in the state the request needs, such as removing an organization's owner. `detail` says what. | |
+| `/errors/authz/forbidden` | 403 | You are signed in and this is not allowed. `detail` says why. | |
+| `/errors/authz/insufficient-role` | 403 | Your role does not allow this. `detail` names the least role that would, such as `required admin, have member`. | |
+| `/errors/tenant/cross-tenant-denied` | 403 | The request reached outside the organization or project it is allowed to act in. | |
+| `/errors/bad-request` | 400 | The request body did not parse or failed validation. `detail` names the field. | |
+| `/errors/payload-too-large` | 413 | The request body is larger than this route accepts. | `max_bytes` |
+| `/errors/incompatible-client` | 426 | The client is older than the oldest version Telmoni still supports. Upgrade it. | |
+| `/errors/tenant/rate-limited` | 429 | Too many requests. Wait and try again. A `Retry-After` header carries the same number of seconds. | `retry_after_secs` |
+| `/errors/tenant/feature-off` | 503 | This feature is switched off for your organization. `detail` says which in a sentence. | `flag`, `retry_after_secs` |
+| `/errors/mail/delivery-failed` | 502 | An email this request depended on, such as a confirmation code, could not be sent. | |
+| `/errors/internal/database` | 500 | Telmoni's database failed. | |
+| `/errors/internal/unknown` | 500 | Something else on Telmoni's side failed. | |
+| `/errors/agent/disabled` | 503 | The operator of this deployment has not configured the console agent. | |
+| `/errors/agent/model-unavailable` | 502 | The agent model or embeddings provider could not be reached. | |
+| `/errors/agent/rate-limited` | 429 | The console agent request was rate limited. Wait and try again. | `retry_after_secs` |
+
+`feature-off` answers `503` with a retry hint, not `404`, on purpose: the route
+exists and the switch is Telmoni's, so a program should wait and retry rather
+than conclude the route is gone.
+
+## Answers that are not problem documents
+
+Four answers come from outside this scheme and have a simpler body.
+
+**A rejected API key** on the [API](/api/reference/) is `401` with a
+`WWW-Authenticate: Bearer` header:
+
+```json
+{ "error": "a live telmoni_ API token is required" }
+```
+
+**The API unable to reach its own storage or service** is `503` with one of:
+
+```json
+{ "error": "database unavailable" }
+```
+
+```json
+{ "error": "upstream unavailable" }
+```
+
+**A method the API route does not take** is `405` with an `Allow` header. Its
+body is a problem document whose type is not in the table above:
+
+```json
+{
+  "type": "/errors/method-not-allowed",
+  "title": "method not allowed",
+  "status": 405,
+  "detail": "this lane takes GET, HEAD"
+}
+```

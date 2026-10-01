@@ -1,0 +1,72 @@
+---
+title: "API keys"
+description: "Creating, rotating, and revoking API keys that authenticate requests to the Telmoni API, with rotation grace periods and security practices."
+---
+
+An API key (token) authenticates scripts, services, and background workers to the
+[Telmoni API](/api/reference/). API keys belong to a **Project** and are managed
+from the project's **API keys** page (`/[projectId]/api-keys`).
+
+## Creating a key
+
+Project **Owners** and **Admins** can generate, rotate, and revoke API keys.
+
+1. Navigate to your project's **API keys** page.
+2. Select **Create API key**.
+3. Provide a name describing what service uses the key.
+4. Set an expiration window (default is 90 days; custom durations or no expiry are
+   also supported).
+
+**The raw token is displayed exactly once upon creation.** Copy and store it in
+your secret manager immediately. Telmoni persists only a SHA-256 hash of the
+token; no user or operator can retrieve the secret later.
+
+Every key begins with the prefix `telmoni_` so that secret scanning tools and
+linters can detect accidental exposure.
+
+## Using a key
+
+Include the key as a bearer token in the HTTP `Authorization` header:
+
+```console
+$ curl -H "Authorization: Bearer $TELMONI_API_KEY" https://telmoni.com/v1/organization
+```
+
+A token is scoped to its project and resolves to the project's parent
+organization on `/v1` routes. A token remains active regardless of whether the
+individual user who created it leaves the project.
+
+## Who can see keys
+
+Project **Admins** and **Members** can view the list of active keys: each key's
+name, creation date, last used timestamp, and expiration date. The secret itself
+is never visible after creation.
+
+## Rotating a key
+
+To replace an existing key without downtime, select **Rotate** on its row on the
+**API keys** page.
+
+Rotating a key produces a new `telmoni_` token (shown once) and keeps the
+previous token valid for a **24-hour grace period**. This window ensures you can
+safely update your environments, services, and pipelines before the old key is
+retired.
+
+Rotation is recorded as an audit event in the project's
+[audit log](/workspace/audit-log/).
+
+## Revoking a key
+
+To immediately terminate a compromised or decommissioned key, select **Revoke**
+on its row. Revocation takes effect immediately: subsequent requests using that
+token fail with `401 Unauthorized`.
+
+## Key security best practices
+
+- **Isolate by workload**: Create distinct API keys for each service or
+  automation rather than sharing a single key across multiple tasks.
+- **Rotate with grace windows**: Use rotation to replace credentials smoothly
+  without risking dropped requests.
+- **Server-side only**: Keep API keys in environment variables or secure vault
+  systems on servers. Never embed API keys into client-side code, frontend
+  browsers, or mobile applications.

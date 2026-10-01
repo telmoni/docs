@@ -1,0 +1,28 @@
+---
+/**
+ * Starlight's head, plus preloads for fonts and the corners pre-paint boot script.
+ *
+ * Astro's font pipeline writes the `@font-face` rules and the metric-adjusted
+ * fallbacks on its own, but it emits the preload link only where `<Font>`
+ * renders one. Without these two tags the browser discovers a face only after
+ * the stylesheet that names it, which is late enough to paint the header in
+ * the fallback first.
+ *
+ * The corners boot script runs synchronously before first paint to prevent any
+ * layout flash or corner-radius flicker when "sharp" edges are selected in
+ * localStorage.
+ */
+import Default from "@astrojs/starlight/components/Head.astro";
+import { Font } from "astro:assets";
+---
+
+<Default><slot /></Default>
+<Font cssVariable="--font-inter" preload />
+<Font cssVariable="--font-geist-mono" preload />
+<script is:inline>
+  try {
+    if (localStorage.getItem("telmoni-corners") === "sharp") {
+      document.documentElement.classList.add("theme-sharp");
+    }
+  } catch (e) {}
+</script>

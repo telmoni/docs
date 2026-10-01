@@ -1,0 +1,312 @@
+---
+title: Production & Maintenance
+description: Production hardening, database role separation, automated partition rotation, reverse proxying, and disaster recovery.
+---
+
+import { Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+
+Deploying Telmoni in high-security production environments requires hardening database access, establishing automated audit partition rotations, configuring TLS reverse proxies, and transitioning authentication from quickstart passwords to enterprise Single Sign-On (OIDC).
+
+## Identity & Authentication: Production OIDC Hardening
+
+When first launching Telmoni, you can bootstrap an initial owner account using `ADMIN_EMAIL` and `ADMIN_PASSWORD`. However, **local username and password authentication is designed only for quickstarts, local testing, and evaluation**.
+
+In a production deployment, **we strongly recommend connecting an enterprise OpenID Connect (OIDC) identity provider** (such as Okta, Keycloak, Microsoft Entra ID, Authentik, or Google Workspace) and disabling local password forms entirely.
+
+### Why use OIDC in production?
+
+1. **Centralized Lifecycle & Access Control**: When an employee leaves your organization or transfers teams, deprovisioning their access in your IdP immediately blocks their Telmoni session.
+2. **Enforce Enterprise MFA**: All multi-factor authentication (FIDO2 WebAuthn, hardware security keys, TOTP) is enforced upstream at your identity provider.
+3. **Eliminate Password Attacks**: Removing local password forms eliminates credential stuffing, password spraying, and brute-force vectors against your console.
+
+### Step-by-step transition to OIDC
+
+<Steps>
+
+1. **Configure your OpenID Connect Provider**
+
+   Register Telmoni in your Identity Provider (IdP) with the following parameters:
+   - **Allowed Redirect URI**: `https://telmoni.example.com/auth/callback`
+   - **Scopes**: `openid`, `email`, `profile`
+
+2. **Add OIDC variables to your environment**
+
+   Configure the provider details in your `.env` or Kubernetes secret:
+
+   ```sh
+   # Identity Provider Discovery URL (must serve /.well-known/openid-configuration)
+   OIDC_ISSUER=https://idp.example.com/realms/production
+   OIDC_CLIENT_ID=telmoni-client-id
+   OIDC_CLIENT_SECRET=telmoni-client-secret
+   OIDC_REDIRECT_URI=https://telmoni.example.com/auth/callback
+   OIDC_NAME="Corporate SSO"
+
+   # Restrict self-registration
+   OIDC_ALLOW_SIGN_UP=false
+   ALLOW_SIGN_UP=false
+   ```
+
+3. **Verify OIDC sign-in**
+
+   Restart the server and log in using the newly available **"Continue with Corporate SSO"** button. Confirm that your user identity logs in and gains administrative access.
+
+4. **Disable the local password form**
+
+   Once OIDC login is verified, remove `ADMIN_EMAIL` and `ADMIN_PASSWORD` from your environment and set:
+
+   ```sh
+   DISABLE_LOGIN_FORM=true
+   ```
+
+   > [!IMPORTANT]
+   > The Telmoni server performs sanity checks at boot:
+   > - If `DISABLE_LOGIN_FORM=true` is set without a configured `OIDC_ISSUER`, the server halts immediately because nobody could sign in.
+   > - If `ADMIN_EMAIL` is set alongside `DISABLE_LOGIN_FORM=true`, the server halts because a password account could never log in. Remove `ADMIN_EMAIL` before enabling `DISABLE_LOGIN_FORM`.
+
+</Steps>
+
+---
+
+## Database role hardening
+
+Telmoni enforces strict least-privilege principles at the database layer. In a production cluster, the application modules should never connect as a PostgreSQL superuser. 
+
+### Role separation
+
+The database tier is split into four distinct roles:
+
+```text
+┌─────────────────┬────────────────────────────────────────────────────────┐
+│ Role            │ Granted Capabilities                                   │
+├─────────────────┼────────────────────────────────────────────────────────┤
+│ telmoni_migrator│ Owns all tables, schemas, and views. Runs DDL.          │
+│ telmoni_auth    │ CRUD on accounts, orgs, projects, and RBAC tables.      │
+│ telmoni_notif   │ CRUD on delivery queues, feeds, and connector records. │
+│ telmoni_agent   │ Read/write on document chunks and vector embeddings.   │
+└─────────────────┴────────────────────────────────────────────────────────┘
+```
+
+### Applying role hardening
+
+To apply the production hardening policies, run the superuser setup script provided in the repository:
+
+<Steps>
+
+1. **Create the login roles**
+
+   Connect to your PostgreSQL 17 cluster as a superuser and create the service roles:
+
+   ```sql
+   CREATE ROLE telmoni_migrator WITH LOGIN PASSWORD 'migrator_secure_password';
+   CREATE ROLE telmoni_auth WITH LOGIN PASSWORD 'auth_secure_password';
+   CREATE ROLE telmoni_notif WITH LOGIN PASSWORD 'notif_secure_password';
+   CREATE ROLE telmoni_agent WITH LOGIN PASSWORD 'agent_secure_password';
+   ```
+
+2. **Execute hardening script**
+
+   Apply `crates/migrator/sql/role_hardening.sql`:
+
+   ```bash
+   psql "$SUPERUSER_DATABASE_URL" -v ON_ERROR_STOP=1 -f crates/migrator/sql/role_hardening.sql
+   ```
+
+   This script:
+   - Strips `SUPERUSER`, `CREATEROLE`, and `CREATEDB` from all service roles.
+   - Enforces `NOBYPASSRLS` across `telmoni_auth`, `telmoni_notif`, and `telmoni_agent` so that application pools cannot bypass PostgreSQL Row-Level Security policies.
+   - Locks down default permissions in the `public` schema.
+
+3. **Run migrations and apply object grants**
+
+   Execute the migrator as the `telmoni_migrator` user:
+
+   ```bash
+   MIGRATOR_DATABASE_URL="postgres://telmoni_migrator:migrator_secure_password@postgres:5432/telmoni" \
+     telmoni migrate
+   ```
+
+   The migrator automatically executes `object_grants.sql`, granting only the specific `SELECT`, `INSERT`, `UPDATE`, and `DELETE` privileges each service module needs to operate.
+
+</Steps>
+
+---
+
+## Audit log partition rotation
+
+Telmoni's audit log uses range-partitioned tables partitioned monthly by timestamp (`occurred_at`). To maintain query performance and automatically drop tables that exceed your organization's retention window, run the rotation command:
+
+```bash
+telmoni rotate
+```
+
+### Rotation behavior
+
+- **Forward Runway**: Always ensures that the current calendar month and the next **three months** of partitions exist ahead of time (`{table}_YYYY_MM`).
+- **Retention Pruning**: Automatically drops expired monthly child tables that fall outside your configured retention window.
+- **Idempotency**: Safe to run continuously; if partitions exist, no changes are made.
+
+### Scheduling via cron or systemd timer
+
+Run the rotation job once per week (or once per day):
+
+```bash
+# /etc/cron.d/telmoni-rotate
+0 3 * * 0 root docker compose -f /opt/telmoni/deploy/compose/docker-compose.yml run --rm migrate telmoni rotate
+```
+
+---
+
+## Operator CLI sweeps & disaster recovery
+
+The `telmoni` binary includes administrative commands for cluster operators.
+
+### Background maintenance sweeps
+
+While `telmoni serve` runs scheduled background sweeps in its main loop, you can trigger individual maintenance jobs on demand:
+
+```bash
+# Execute soft-deletion cleanup saga (permanently purges organizations past 14-day grace)
+telmoni sweep deletion
+
+# Verify cryptographic hash chain across the audit ledger
+telmoni sweep audit-verify
+
+# Purge read notifications and webhook delivery logs past retention
+telmoni sweep retention
+
+# Re-index all document and metadata embeddings into pgvector
+telmoni sweep agent-reindex
+```
+
+### Emergency organization management
+
+If an organization needs to be terminated or recovered manually by a platform administrator:
+
+```bash
+# Immediately suspend an organization and enter the 14-day soft-deletion window
+telmoni terminate org_01j7abcde987654321
+
+# Restore a suspended organization within the 14-day grace period
+telmoni restore org_01j7abcde987654321
+```
+
+---
+
+## Reverse proxy configuration
+
+In production, place Telmoni behind a reverse proxy that terminates TLS, enforces HTTP/2 or HTTP/3, and handles WebSocket upgrades. Never expose internal ports `3000` or `8082` directly to the public internet.
+
+<Tabs>
+  <TabItem label="Caddy (Recommended)">
+    Caddy automatically provisions and renews Let's Encrypt / ZeroSSL certificates:
+
+    ```nginx
+    # /etc/caddy/Caddyfile
+    telmoni.example.com {
+        encode zstd gzip
+
+        # Next.js Web Console
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Nginx">
+    Standard Nginx configuration with TLS and WebSocket/SSE support:
+
+    ```nginx
+    # /etc/nginx/sites-available/telmoni.conf
+    server {
+        listen 80;
+        server_name telmoni.example.com;
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443 ssl http2;
+        server_name telmoni.example.com;
+
+        ssl_certificate /etc/letsencrypt/live/telmoni.example.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/telmoni.example.com/privkey.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+
+        client_max_body_size 25M;
+
+        location / {
+            proxy_pass http://127.0.0.1:3000;
+            proxy_http_version 1.1;
+
+            # WebSocket and SSE support
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Timeouts for real-time streams
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## Backups & disaster recovery
+
+### PostgreSQL backups
+
+Telmoni stores all persistent state in PostgreSQL. Create periodic physical or logical backups using `pg_dump`:
+
+```bash
+# Logical database dump
+pg_dump -U telmoni -d telmoni -Fc -f "/backups/telmoni_$(date +%Y%m%d_%H%M%S).dump"
+```
+
+To restore from a backup file:
+
+```bash
+pg_restore -U telmoni -d telmoni --clean --if-exists "/backups/telmoni_backup.dump"
+```
+
+> [!IMPORTANT]
+> If your deployment uses `CONNECTOR_KEK` for encrypting connector tokens at rest, always safeguard and backup your encryption key alongside your database dumps. Restoring database rows without the matching key will make connector credentials permanently unreadable.
+
+---
+
+## Upgrades
+
+To upgrade a self-hosted Telmoni installation:
+
+<Steps>
+
+1. **Pull the latest container images**
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml pull
+   ```
+
+2. **Execute database migrations**
+
+   Always run the migration step before starting new application containers:
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml run --rm migrate
+   ```
+
+3. **Restart the server and web console**
+
+   ```bash
+   docker compose -f deploy/compose/docker-compose.yml up -d
+   ```
+
+</Steps>

@@ -1,0 +1,71 @@
+---
+title: "Signing up and signing in"
+description: "Authentication methods in Telmoni, what your first sign-in provisions, session lifecycles, and signing out."
+---
+
+How you sign in depends on your deployment configuration. Telmoni supports both
+native email/password authentication and external identity providers.
+
+## Native accounts
+
+On standalone and self-hosted instances using Telmoni's built-in authentication:
+
+- **Sign up**: Enter your email address, a password (minimum 8 characters), and
+  optionally a display name. Telmoni emails a confirmation link that expires in
+  24 hours. The account cannot be used until you verify your address.
+- **Sign in**: Authenticate with your email and password. To protect against
+  brute force attacks, ten consecutive incorrect attempts lock the account for
+  15 minutes.
+- **Password reset**: Selecting **Forgot your password?** emails a single-use
+  reset link valid for 60 minutes. Using the link terminates all active sessions.
+
+Passwords are salted and hashed using Argon2id.
+
+## Identity providers (OIDC)
+
+A deployment can configure external identity providers (such as Google, GitHub,
+or corporate OIDC / SAML single sign-on). In this mode, user authentication is
+handled by the provider. Telmoni validates the identity token, provisions the
+local account, and never handles the raw password.
+
+## What your first sign-in creates
+
+The first time you sign in while sign-ups are open, Telmoni automatically
+provisions:
+
+1. **An Organization**, seating your account as its **Owner**. The organization
+   is labeled by your email address until you name it.
+2. **A Default Project** inside your organization, named `Default Project`, so
+   you can immediately create API keys and configure connectors.
+
+Your account is separate from the organization. You can create multiple
+organizations, hold projects within each, and accept invitations to organizations
+managed by others.
+
+## When sign-ups are closed
+
+When an operator disables public sign-ups:
+- New users cannot register without an active invitation.
+- Existing users can sign in normally.
+- If you belong to no organization (e.g. after leaving or deleting one), you are
+  presented with an account-only screen offering:
+  - **Pending invitations**: Accept or decline invitations to existing workspaces.
+  - **Deleted organizations**: Restore an organization deleted within the last 14
+    days.
+  - **Account settings**: Manage email, password, and session termination.
+  - **Account deletion**: Permanently delete your account and personal data.
+
+## Sessions
+
+Each sign-in generates an active session backed by an HTTP-only cookie.
+Your account's **Privacy** page (`/account/privacy`) lists all active sessions,
+including device details and last active timestamps. You can revoke any other
+session remotely.
+
+Changing your email address or resetting your password terminates all active
+sessions immediately.
+
+## Signing out
+
+Signing out destroys your active session token in the database and clears the
+session cookie.

@@ -1,0 +1,42 @@
+---
+title: "Account settings"
+description: "Managing your display name, changing your account email address, and resetting your password."
+---
+
+Your account's **Settings** page (`/account/settings`) manages personal account
+credentials. These settings belong to your identity alone and apply across all
+organizations you belong to.
+
+## Your display name
+
+Your display name is set during initial registration or provided by your identity
+provider. It appears on comments, invitations, and audit log entries attributed
+to you.
+
+## Changing your email address
+
+Accounts that authenticate using email and password can change their registered
+email address. (Accounts using external identity providers must update their
+email directly with their provider).
+
+Updating your email requires two 6-digit verification codes:
+
+1. Enter the new email address, which must not already be registered.
+2. Two 6-digit codes are dispatched simultaneously:
+   - One to your **current** email address.
+   - One to your **new** email address.
+3. Enter both verification codes into the console. Both codes expire after
+   **15 minutes**.
+
+When the email update succeeds:
+- **All active sessions are terminated immediately** (including the current
+  session). You must sign in again with your new email address.
+- Any pending deletion codes or sensitive confirmation codes issued to the old
+  email address are invalidated.
+
+## Resetting your password
+
+For email/password accounts, select **Email me a password reset link**. A single-use
+token is dispatched to your email address, valid for **60 minutes**. Using the
+reset link invalidates all existing sessions and updates the stored Argon2id
+password hash.
