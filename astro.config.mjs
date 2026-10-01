@@ -10,7 +10,7 @@ const base = process.env.DOCS_BASE !== undefined ? process.env.DOCS_BASE : "";
 
 // The sidebar is the book's order, and it is the only place that holds it: `slug` is checked
 // against the pages on disk at build time, so a renamed page fails here rather than shipping a
-// dead nav entry (which is what `SUMMARY.md` used to be for). An entry carries no `label` of its
+// dead nav entry. An entry carries no `label` of its
 // own, so the name in the nav is the page's own `title` and the two cannot drift apart.
 // The two faces the palette names, resolved through Astro's font pipeline rather than by importing
 // Fontsource's stylesheet. The pipeline is what emits the `<link rel="preload">` and, more to the
@@ -119,6 +119,7 @@ export default defineConfig({
           items: [
             { slug: "account/settings" },
             { slug: "account/privacy" },
+            { slug: "account/billing" },
           ],
         },
         {

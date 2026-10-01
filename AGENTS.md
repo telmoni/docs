@@ -8,7 +8,7 @@
 
 **Document only what is built and user-accessible:**
 - **Covered scope:** Sign-in, teams, members and roles, audit log, notifications and connectors, API keys, the read-only `/v1` API, account settings, and billing (per team; Hobby tier only, uncapped).
-- **Retired observability product:** Telmoni retired its observability product (services, SLOs, alerts, incidents, metrics, logs, traces, ingest) on 2026-09-15. Do **not** document any of these features.
+- **Retired observability product:** Telmoni has no observability product (services, SLOs, alerts, incidents, metrics, logs, traces, ingest). Do **not** document any of these features.
 - **Unbuilt roadmap items:** `ROADMAP.md` in Telmoni plans heartbeat monitoring for AI agents and cron jobs; none of this is built. Do **not** document roadmap items as existing features.
 - **Backend route vs. console surface:** Built in a backend service does not equal reachable by a user. For example, account export has a route in auth, but nothing in the console calls it, so it is omitted. Always check `web/app` in `telmoni` to confirm user reachability before documenting.
 - **Voice and factual claims:** Claim nothing the project cannot back. Describe mechanisms a diff can disprove. Do not write outcome guarantees ("tamper-resistant", "never leaks", "guaranteed"). Do not write migration notes, upgrade paths, or "if you pinned an older rev" guidance for non-existent users.
