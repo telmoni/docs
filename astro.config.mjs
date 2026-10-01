@@ -2,9 +2,8 @@
 import { defineConfig, fontProviders } from "astro/config";
 import starlight from "@astrojs/starlight";
 
-// GitHub Pages, on the custom domain `docs.telmoni.com` (`public/CNAME`; the DNS CNAME points at
-// telmoni.github.io). `DOCS_SITE` and `DOCS_BASE` override both for a preview served from
-// somewhere else, such as a repository's own Pages site under a path.
+// The canonical site URL `https://docs.telmoni.com`. `DOCS_SITE` and `DOCS_BASE` override both
+// for a preview served from somewhere else, such as a staging environment under a path.
 const site = process.env.DOCS_SITE || "https://docs.telmoni.com";
 const base = process.env.DOCS_BASE !== undefined ? process.env.DOCS_BASE : "";
 
