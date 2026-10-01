@@ -50,8 +50,8 @@ can branch on.
 | `/errors/internal/database` | 500 | Telmoni's database failed. | |
 | `/errors/internal/unknown` | 500 | Something else on Telmoni's side failed. | |
 | `/errors/agent/disabled` | 503 | The operator of this deployment has not configured the console agent. | |
-| `/errors/agent/model-unavailable` | 502 | The agent model or embeddings provider could not be reached. | |
-| `/errors/agent/rate-limited` | 429 | The console agent request was rate limited. Wait and try again. | `retry_after_secs` |
+| `/errors/agent/model-unavailable` | 502 | The model or embeddings service behind the console agent did not answer. Nothing was changed; try again shortly. | |
+| `/errors/agent/rate-limited` | 429 | You have asked the console agent as many questions as this hour allows. | `retry_after_secs` |
 
 `feature-off` answers `503` with a retry hint, not `404`, on purpose: the route
 exists and the switch is Telmoni's, so a program should wait and retry rather

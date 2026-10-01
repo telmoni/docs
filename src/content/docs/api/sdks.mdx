@@ -1,163 +1,104 @@
 ---
 title: "Client SDKs"
-description: "Official multi-language client libraries for Telmoni: TypeScript / JavaScript, Python, Go, and Rust."
+description: "The Telmoni client SDK scaffolds for TypeScript / JavaScript, Python, Go, and Rust: configuration only, not yet published."
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-Telmoni provides official client SDKs for integrating with the platform across multiple programming languages. All SDKs support automatic environment variable discovery, custom endpoint configuration, and API key authentication.
+The SDKs are scaffolds. Each one holds configuration (the endpoint, an API
+key, and an organization) and nothing that calls the platform yet; each grows
+a client once its contract exists. None is published to a package registry
+yet, so each installs from the
+[`telmoni/telmoni-cli`](https://github.com/telmoni/telmoni-cli) repository.
 
-| Language | Package / Module | Registry | Source |
-|---|---|---|---|
-| **TypeScript / JavaScript** | `telmoni` | [npm](https://www.npmjs.com/package/telmoni) | [`sdk/typescript`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/typescript) |
-| **Python** | `telmoni` | [PyPI](https://pypi.org/project/telmoni/) | [`sdk/python`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/python) |
-| **Go** | `github.com/telmoni/telmoni-cli/sdk/go` | Go Modules | [`sdk/go`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/go) |
-| **Rust** | `telmoni-sdk` | [crates.io](https://crates.io/crates/telmoni-sdk) | [`sdk/rust`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/rust) |
+| Language | Package / Module | Source |
+|---|---|---|
+| **TypeScript / JavaScript** | `telmoni` | [`sdk/typescript`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/typescript) |
+| **Python** | `telmoni` (Python 3.9 or later) | [`sdk/python`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/python) |
+| **Go** | `github.com/telmoni/telmoni-cli/sdk/go` | [`sdk/go`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/go) |
+| **Rust** | `telmoni-sdk` | [`sdk/rust`](https://github.com/telmoni/telmoni-cli/tree/main/sdk/rust) |
 
 ---
 
-## TypeScript / JavaScript SDK
-
-### Installation
-
-```bash
-npm install telmoni
-```
-
-### Quickstart
+## Configuration
 
 <Tabs>
-  <TabItem label="TypeScript / ESM">
+  <TabItem label="TypeScript">
     ```ts
     import { Telmoni } from 'telmoni';
 
-    // Automatically reads TELMONI_ENDPOINT, TELMONI_API_KEY, and TELMONI_TENANT_ID
-    const telmoni = Telmoni.fromEnv();
+    const fromEnv = Telmoni.fromEnv();
 
-    // Or initialize with explicit configuration:
-    const customClient = new Telmoni({
+    const custom = new Telmoni({
       endpoint: 'https://telmoni.com',
       apiKey: process.env.TELMONI_API_KEY,
-      tenantId: 'org_01j7abcde987654321',
+      organizationId: 'org_01j7abcde987654321',
     });
     ```
   </TabItem>
-  <TabItem label="CommonJS">
-    ```js
-    const { Telmoni } = require('telmoni');
+  <TabItem label="Python">
+    ```python
+    from telmoni import Config, Telmoni
 
-    const telmoni = Telmoni.fromEnv();
+    from_env = Telmoni.from_env()
+
+    custom = Telmoni(
+        Config(
+            endpoint="https://telmoni.com",
+            auth_token="telmoni_...",
+            organization_id="org_01j7abcde987654321",
+        )
+    )
+    ```
+  </TabItem>
+  <TabItem label="Go">
+    ```go
+    package main
+
+    import (
+    	telmoni "github.com/telmoni/telmoni-cli/sdk/go"
+    )
+
+    func main() {
+    	fromEnv := telmoni.NewFromEnv()
+
+    	custom := telmoni.New(telmoni.Config{
+    		Endpoint:       "https://telmoni.com",
+    		AuthToken:      "telmoni_...",
+    		OrganizationID: "org_01j7abcde987654321",
+    	})
+
+    	_, _ = fromEnv, custom
+    }
+    ```
+  </TabItem>
+  <TabItem label="Rust">
+    ```rust
+    use telmoni_sdk::{Config, Telmoni};
+
+    fn main() {
+        let from_env = Telmoni::from_env();
+
+        let custom = Telmoni::new(Config::new(
+            "https://telmoni.com",
+            Some("org_01j7abcde987654321".to_string()),
+            Some("telmoni_...".to_string()),
+        ));
+
+        let _ = (from_env, custom);
+    }
     ```
   </TabItem>
 </Tabs>
 
 ---
 
-## Python SDK
+## Environment variables
 
-### Installation
-
-```bash
-pip install telmoni
-```
-
-### Quickstart
-
-```python
-from telmoni import Telmoni, Config
-
-# Initialize from standard environment variables
-client = Telmoni.from_env()
-
-# Or initialize with explicit parameters
-custom_client = Telmoni(
-    Config(
-        endpoint="https://telmoni.example.com",
-        api_key="telmoni_...",
-        tenant_id="org_01j7abcde987654321",
-    )
-)
-```
-
-Supports Python 3.9 through 3.14. Includes built-in type annotations (`py.typed`).
-
----
-
-## Go SDK
-
-### Installation
-
-```bash
-go get github.com/telmoni/telmoni-cli/sdk/go
-```
-
-### Quickstart
-
-```go
-package main
-
-import (
-	telmoni "github.com/telmoni/telmoni-cli/sdk/go"
-)
-
-func main() {
-	// Initialize from environment variables
-	client := telmoni.NewFromEnv()
-
-	// Or with custom configuration
-	customClient := telmoni.New(telmoni.Config{
-		Endpoint:  "https://telmoni.example.com",
-		AuthToken: "telmoni_...",
-		TenantID:  "org_01j7abcde987654321",
-	})
-
-	_ = client
-	_ = customClient
-}
-```
-
----
-
-## Rust SDK
-
-### Installation
-
-Add `telmoni-sdk` to your `Cargo.toml`:
-
-```toml
-[dependencies]
-telmoni-sdk = "0.0.1"
-```
-
-### Quickstart
-
-```rust
-use telmoni_sdk::{Config, Telmoni};
-
-fn main() {
-    // Automatically load from TELMONI_ENDPOINT, TELMONI_API_KEY, TELMONI_TENANT_ID
-    let client = Telmoni::from_env();
-
-    // Or construct a client with custom configuration
-    let custom_config = Config::new(
-        "https://telmoni.example.com",
-        Some("org_01j7abcde987654321".to_string()),
-        Some("telmoni_...".to_string()),
-    );
-    let custom_client = Telmoni::new(custom_config);
-
-    let _ = (client, custom_client);
-}
-```
-
----
-
-## Standard environment variables
-
-All SDKs automatically detect and adhere to the following standard environment variables:
+`fromEnv` / `from_env` / `NewFromEnv` read:
 
 | Variable | Description | Default |
 |---|---|---|
-| `TELMONI_ENDPOINT` / `TELMONI_API_URL` | The Telmoni platform endpoint | `https://telmoni.com` |
-| `TELMONI_API_KEY` / `TELMONI_AUTH_TOKEN` | Bearer API token created in project settings | None |
-| `TELMONI_TENANT_ID` / `TELMONI_ORG` | Default organization / tenant identifier | None |
+| `TELMONI_ENDPOINT` | The Telmoni platform endpoint | `https://telmoni.com` |
+| `TELMONI_API_KEY` | An API key, created in project settings | None |
+| `TELMONI_ORG` | The organization ID | None |

@@ -214,7 +214,6 @@ https://telmoni.internal.company.com
 | Key | Description | Default |
 |---|---|---|
 | `endpoint` | The Telmoni server URL to target | `https://telmoni.com` |
-| `output_format` | Default output format (`text` or `json`) | `text` |
 
 ---
 
@@ -224,9 +223,9 @@ The CLI respects the following environment variables. Environment variables take
 
 | Variable | Description |
 |---|---|
-| `TELMONI_ENDPOINT` / `TELMONI_API_URL` | Overrides the server endpoint (default: `https://telmoni.com`) |
-| `TELMONI_API_KEY` / `TELMONI_AUTH_TOKEN` | Direct API key authentication for CI/CD runs |
-| `TELMONI_ORG` / `TELMONI_TENANT_ID` | Overrides the active organization ID |
+| `TELMONI_ENDPOINT` | Overrides the server endpoint (default: `https://telmoni.com`) |
+| `TELMONI_API_KEY` | The API key `telmoni login` uses when `--key` is not given, for CI/CD runs |
+| `TELMONI_ORG` | Overrides the active organization ID |
 
 ---
 

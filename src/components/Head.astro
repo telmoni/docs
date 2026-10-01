@@ -6,7 +6,9 @@
  * fallbacks on its own, but it emits the preload link only where `<Font>`
  * renders one. Without these two tags the browser discovers a face only after
  * the stylesheet that names it, which is late enough to paint the header in
- * the fallback first.
+ * the fallback first. After changing them or `fonts` in `astro.config.mjs`,
+ * `grep -o 'rel="preload"' dist/integrations/webhooks/index.html | wc -l`
+ * after `npm run build` must print `2`.
  *
  * The corners boot script runs synchronously before first paint to prevent any
  * layout flash or corner-radius flicker when "sharp" edges are selected in
