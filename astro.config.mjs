@@ -107,8 +107,10 @@ export default defineConfig({
           ],
         },
         {
-          label: "API",
+          label: "Developer tools & API",
           items: [
+            { slug: "api/cli" },
+            { slug: "api/sdks" },
             { slug: "api/api-keys" },
             { slug: "api/reference" },
             { slug: "errors" },

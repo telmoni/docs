@@ -3,7 +3,7 @@ title: "API keys"
 description: "Creating, rotating, and revoking API keys that authenticate requests to the Telmoni API, with rotation grace periods and security practices."
 ---
 
-An API key (token) authenticates scripts, services, and background workers to the
+An API key (token) authenticates scripts, services, background workers, the [Telmoni CLI](/api/cli/), and the [Client SDKs](/api/sdks/) to the
 [Telmoni API](/api/reference/). API keys belong to a **Project** and are managed
 from the project's **API keys** page (`/[projectId]/api-keys`).
 
@@ -30,6 +30,21 @@ Include the key as a bearer token in the HTTP `Authorization` header:
 
 ```console
 $ curl -H "Authorization: Bearer $TELMONI_API_KEY" https://telmoni.com/v1/organization
+```
+
+You can also pass it to the [Telmoni CLI](/api/cli/):
+
+```console
+$ telmoni login --key $TELMONI_API_KEY
+# Or set TELMONI_API_KEY in your environment
+```
+
+Or configure it in any of our official [Client SDKs](/api/sdks/):
+
+```ts
+import { Telmoni } from 'telmoni';
+
+const client = new Telmoni({ apiKey: process.env.TELMONI_API_KEY });
 ```
 
 A token is scoped to its project and resolves to the project's parent

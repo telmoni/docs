@@ -30,16 +30,18 @@ local account, and never handles the raw password.
 
 ## Device authentication (CLI)
 
-To sign in from terminal sessions, SSH hosts, or the Telmoni CLI, Telmoni implements
+To sign in from terminal sessions, SSH hosts, or the [Telmoni CLI](/api/cli/), Telmoni implements
 the OAuth 2.0 Device Authorization Grant ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)):
 
-1. The CLI initiates the authorization flow and displays a confirmation code
+1. The CLI initiates the authorization flow via `telmoni login` and displays a confirmation code
    alongside a verification URL (`/auth/device?code=...`).
 2. Open the verification URL in any browser where you are signed in.
 3. Confirm that the displayed user code matches what your terminal displays, then select
    **Approve**.
 4. The CLI session is established immediately without transmitting credentials over
    SSH or logging passwords in terminal shell histories.
+
+See the [Telmoni CLI guide](/api/cli/) for full command reference and headless CI login instructions.
 
 ## What your first sign-in creates
 

@@ -1,0 +1,250 @@
+---
+title: "Telmoni CLI"
+description: "Installing and using the official Telmoni command-line tool (telmoni): device authentication, CI login, status, organizations, and configuration."
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+The Telmoni CLI (`telmoni`) is the official command-line interface for interacting with Telmoni from your terminal, scripts, and CI/CD pipelines.
+
+## Installation
+
+<Tabs>
+  <TabItem label="Shell installer (macOS & Linux)">
+    Install the latest precompiled release binary:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/telmoni/telmoni-cli/main/install.sh | sh
+    ```
+
+    To pin a specific version or install into a custom directory (default is `/usr/local/bin` or `~/.local/bin`):
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/telmoni/telmoni-cli/main/install.sh | TELMONI_VERSION=0.0.1 BINDIR=/usr/local/bin sh
+    ```
+  </TabItem>
+  <TabItem label="From source (Rust / Cargo)">
+    Compile and install directly with the Rust toolchain:
+
+    ```bash
+    cargo install --git https://github.com/telmoni/telmoni-cli.git --locked
+    ```
+
+    Or from a local clone of the repository:
+
+    ```bash
+    cd telmoni-cli
+    cargo install --path . --locked
+    ```
+  </TabItem>
+</Tabs>
+
+Verify the installation by checking the version:
+
+```console
+$ telmoni --version
+telmoni 0.0.1
+```
+
+---
+
+## Authentication
+
+### 1. Interactive login (Browser & Device Code)
+
+For local development machines, authenticate using the interactive device authorization flow ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)):
+
+```console
+$ telmoni login
+```
+
+The CLI prints a one-time verification code and URL:
+
+```text
+First copy your one-time code: ABCD-EFGH
+Then open https://telmoni.com/device and enter it.
+```
+
+1. Open the displayed URL in any authenticated browser.
+2. Confirm that the verification code matches what appears in your terminal.
+3. Select **Approve**.
+4. The CLI detects approval automatically, saves credentials locally, and reports success.
+
+```text
+Successfully authenticated as alex@example.com (Organization: Acme Corp)
+```
+
+Your CLI session appears under **Active sessions** on your account's **Privacy** page (`/account/privacy`) (labeled e.g., `"Telmoni CLI (macOS)"`). Revoking the session from the web console terminates CLI access immediately.
+
+### 2. Programmatic & CI login (API key)
+
+For headless build systems, GitHub Actions, Docker containers, and background automation, authenticate non-interactively using an [API key](/api/api-keys/):
+
+```console
+$ telmoni login --key telmoni_your_api_key_here
+```
+
+Alternatively, supply the key directly via the `TELMONI_API_KEY` environment variable without running `telmoni login`:
+
+```console
+$ export TELMONI_API_KEY="telmoni_..."
+$ telmoni status
+```
+
+---
+
+## Checking session status
+
+To verify your active identity, email, and selected organization context:
+
+```console
+$ telmoni status
+```
+
+*(You can also use the alias `telmoni whoami`)*
+
+Output:
+
+```text
+Authenticated as: Alex Doe <alex@example.com>
+User ID:          usr_01j7abcde1234567890
+Organization:     Acme Corp (org_01j7abcde987654321)
+Role:             Admin
+Endpoint:         https://telmoni.com
+```
+
+### JSON output for automation
+
+Add `--json` to produce machine-readable output suitable for `jq` or scripting:
+
+```console
+$ telmoni status --json
+```
+
+```json
+{
+  "user": {
+    "id": "usr_01j7abcde1234567890",
+    "email": "alex@example.com",
+    "displayName": "Alex Doe"
+  },
+  "organization": {
+    "id": "org_01j7abcde987654321",
+    "name": "Acme Corp",
+    "role": "admin"
+  },
+  "endpoint": "https://telmoni.com"
+}
+```
+
+---
+
+## Managing organizations
+
+If your account belongs to multiple organizations, use the `org` subcommand to inspect and switch active workspaces.
+
+### List organizations
+
+```console
+$ telmoni org list
+```
+
+```text
+  ID                      NAME          ROLE    ACTIVE
+* org_01j7abcde987654321  Acme Corp     Admin   yes
+  org_01j7xyz98765432100  Staging Labs  Member  no
+```
+
+### Switch active organization
+
+Switch your active default organization context for future commands:
+
+```console
+$ telmoni org switch org_01j7xyz98765432100
+Switched active organization to Staging Labs (org_01j7xyz98765432100)
+```
+
+To temporarily target a specific organization for a single invocation without changing your default context, use the `TELMONI_ORG` environment variable:
+
+```console
+$ TELMONI_ORG=org_01j7xyz98765432100 telmoni status
+```
+
+---
+
+## CLI Configuration
+
+The CLI stores local preferences in your configuration directory.
+
+### View all configuration values
+
+```console
+$ telmoni config list
+```
+
+```text
+endpoint = "https://telmoni.com"
+output_format = "text"
+```
+
+### Get and set configuration values
+
+To point the CLI at a self-hosted Telmoni instance:
+
+```console
+$ telmoni config set endpoint https://telmoni.internal.company.com
+Set endpoint = https://telmoni.internal.company.com
+```
+
+To configure default JSON output:
+
+```console
+$ telmoni config set output_format json
+```
+
+To read back a configuration key:
+
+```console
+$ telmoni config get endpoint
+https://telmoni.internal.company.com
+```
+
+### Configuration keys reference
+
+| Key | Description | Default |
+|---|---|---|
+| `endpoint` | The Telmoni server URL to target | `https://telmoni.com` |
+| `output_format` | Default output format (`text` or `json`) | `text` |
+
+---
+
+## Environment variables
+
+The CLI respects the following environment variables. Environment variables take precedence over saved local configuration:
+
+| Variable | Description |
+|---|---|
+| `TELMONI_ENDPOINT` / `TELMONI_API_URL` | Overrides the server endpoint (default: `https://telmoni.com`) |
+| `TELMONI_API_KEY` / `TELMONI_AUTH_TOKEN` | Direct API key authentication for CI/CD runs |
+| `TELMONI_ORG` / `TELMONI_TENANT_ID` | Overrides the active organization ID |
+
+---
+
+## Logging out & credentials security
+
+To terminate your CLI session and purge saved local credentials:
+
+```console
+$ telmoni logout
+```
+
+This command:
+1. Calls the Telmoni server to immediately revoke the session token in the database.
+2. Removes the local credentials file from your system.
+
+### Credential storage paths
+
+Credentials are stored with strict `0600` permissions (readable and writable only by your OS user):
+
+- **macOS**: `~/Library/Application Support/telmoni/credentials.json`
+- **Linux**: `~/.config/telmoni/credentials.json`

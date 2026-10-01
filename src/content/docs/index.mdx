@@ -5,7 +5,7 @@ description: "What Telmoni is today, core architecture, and navigation guide."
 
 Telmoni provides resilient monitoring infrastructure for scheduled background jobs,
 pipelines, and autonomous AI agents. These documentation pages describe the open
-core platform, console interface, and HTTP API as implemented today.
+core platform, console interface, developer tools, and HTTP API as implemented today.
 
 ## Platform capabilities
 
@@ -27,6 +27,11 @@ Telmoni open core provides the foundational workspace and operational substrate:
 - **[Notifications and connectors](/integrations/notifications/)**: Real-time
   feed updates and fan-out dispatch to [Slack, Discord](/integrations/slack-and-discord/),
   and signed [Webhooks](/integrations/webhooks/).
+- **[Telmoni CLI](/api/cli/)**: The official command-line interface with interactive
+  device code authorization ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)),
+  organization switching, and scriptable JSON output.
+- **[Client SDKs](/api/sdks/)**: Official client libraries for TypeScript / JavaScript,
+  Python, Go, and Rust.
 - **[API keys and /v1 API](/api/api-keys/)**: Scoped `telmoni_` project tokens
   with zero-downtime 24-hour rotation grace periods, authenticating the
   read-only [API](/api/reference/).
@@ -37,9 +42,11 @@ Telmoni open core provides the foundational workspace and operational substrate:
    and deployment models.
 2. [Docker Compose quickstart](/self-host/docker-compose/): Deploying the full stack
    in minutes on a single machine.
-3. [Signing up and signing in](/getting-started/sign-in/): Provisioning your initial
+3. [Telmoni CLI](/api/cli/): Installing the CLI and signing in via device code or API key.
+4. [Client SDKs](/api/sdks/): Integrating Telmoni into TypeScript, Python, Go, or Rust applications.
+5. [Signing up and signing in](/getting-started/sign-in/): Provisioning your initial
    organization and default project.
-4. [Organizations and projects](/workspace/organizations-and-projects/): Workspace
+6. [Organizations and projects](/workspace/organizations-and-projects/): Workspace
    tenancy, project isolation, and lifecycle management.
-5. [Members and invitations](/workspace/members/): Inviting collaborators
+7. [Members and invitations](/workspace/members/): Inviting collaborators
    and managing roles.
