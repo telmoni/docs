@@ -4,7 +4,7 @@ description: "Authentication methods in Telmoni, what your first sign-in provisi
 ---
 
 How you sign in depends on your deployment configuration. Telmoni supports both
-native email/password authentication and external identity providers.
+native email/password authentication, external identity providers, and device authorization for CLI workflows.
 
 ## Native accounts
 
@@ -27,6 +27,19 @@ A deployment can configure external identity providers (such as Google, GitHub,
 or corporate OIDC / SAML single sign-on). In this mode, user authentication is
 handled by the provider. Telmoni validates the identity token, provisions the
 local account, and never handles the raw password.
+
+## Device authentication (CLI)
+
+To sign in from terminal sessions, SSH hosts, or the Telmoni CLI, Telmoni implements
+the OAuth 2.0 Device Authorization Grant ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)):
+
+1. The CLI initiates the authorization flow and displays a confirmation code
+   alongside a verification URL (`/auth/device?code=...`).
+2. Open the verification URL in any browser where you are signed in.
+3. Confirm that the displayed user code matches what your terminal displays, then select
+   **Approve**.
+4. The CLI session is established immediately without transmitting credentials over
+   SSH or logging passwords in terminal shell histories.
 
 ## What your first sign-in creates
 
