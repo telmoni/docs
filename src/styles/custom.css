@@ -582,3 +582,30 @@ html.theme-sharp,
 .theme-sharp ::-webkit-scrollbar {
   border-radius: 0 !important;
 }
+
+/* Social icons matching 32px (size-8) rounded-menu button style */
+.social-icons a,
+.social-icons a.sl-flex {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: var(--radius-menu, 0.75rem) !important;
+  color: var(--muted-foreground) !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.social-icons a:hover,
+.social-icons a.sl-flex:hover {
+  background-color: var(--sidebar-accent) !important;
+  color: var(--foreground) !important;
+}
+
+.social-icons a svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
