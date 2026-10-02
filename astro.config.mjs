@@ -100,6 +100,7 @@ export default defineConfig({
             { slug: "workspace/members" },
             { slug: "workspace/roles" },
             { slug: "workspace/audit-log" },
+            { slug: "workspace/billing" },
           ],
         },
         {
@@ -125,7 +126,7 @@ export default defineConfig({
           items: [
             { slug: "account/settings" },
             { slug: "account/privacy" },
-            { slug: "account/billing" },
+            
           ],
         },
         {

@@ -47,10 +47,10 @@ permissions matrix.
 ## Moving between them
 
 - **Project pages** live under the project's ID in the URL, such as
-  `/[projectId]/api-keys` or `/[projectId]/connectors`.
-- **Organization pages** live under `/organization`, including
-  `/organization/projects`, `/organization/members`,
-  `/organization/audit-log`, and `/organization/settings`.
+  `/:organizationSlug/:projectSlug/api-keys` or `/:organizationSlug/:projectSlug/connectors`.
+- **Organization pages** live under `/:organizationSlug`, including
+  `/:organizationSlug/projects`, `/:organizationSlug/members`,
+  `/:organizationSlug/audit-log`, and `/:organizationSlug/settings`.
 - **Account pages** live under `/account`, including `/account/settings`,
   `/account/notifications`, and `/account/privacy`.
 - **Switch between projects and organizations** using the workspace switcher in
@@ -89,7 +89,7 @@ The web console provides built-in keyboard navigation:
 ### Creating a project
 
 An organization Owner or Admin can create a new project from the
-**Projects** page (`/organization/projects`) or directly from the project
+**Projects** page (`/:organizationSlug/projects`) or directly from the project
 switcher:
 
 1. Select **Create project**.
@@ -100,12 +100,12 @@ switcher:
 ### Renaming a project
 
 An Admin or Owner can rename a project from the project's **Settings** page
-(`/[projectId]/settings`).
+(`/:organizationSlug/:projectSlug/settings`).
 
 ### Deleting a project
 
 Only the **Owner** can delete a project. Deletion is initiated from the
-**Danger zone** on the project's **Settings** page (`/[projectId]/settings`):
+**Danger zone** on the project's **Settings** page (`/:organizationSlug/:projectSlug/settings`):
 
 - Deleting a project permanently deletes its API tokens and connectors.
 - Historical audit events for that project remain preserved in the organization's
@@ -134,7 +134,7 @@ An organization Owner can transfer a project to an Admin:
 ### Renaming an organization
 
 An Owner or Admin can rename an organization from **Organization Settings**
-(`/organization/settings`).
+(`/:organizationSlug/settings`).
 
 ### Transferring organization ownership
 
@@ -154,7 +154,7 @@ organization Admin:
 ### Deleting an organization
 
 Only the **Owner** can delete an organization. Deletion is performed from the
-**Danger zone** in **Organization Settings** (`/organization/settings`):
+**Danger zone** in **Organization Settings** (`/:organizationSlug/settings`):
 
 1. Request a 6-digit confirmation code, which is emailed to the Owner's address
    and remains valid for 15 minutes.

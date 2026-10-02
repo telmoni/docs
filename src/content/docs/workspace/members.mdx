@@ -11,11 +11,11 @@ a [role](/workspace/roles/) of **Admin** or **Member**.
 Telmoni supports two invitation scopes:
 
 1. **Organization invitations**: Invited from the organization's **Members** page
-   (`/organization/members`). Grants an organization role (`Admin` or `Member`).
+   (`/:organizationSlug/members`). Grants an organization role (`Admin` or `Member`).
    An invited Organization Admin gains administrative access across all projects
    in the organization.
 2. **Project invitations**: Invited from a project's **Members** page
-   (`/[projectId]/members`). Grants access directly to that project as an
+   (`/:organizationSlug/:projectSlug/members`). Grants access directly to that project as an
    `Admin` or `Member` without granting organization-wide permissions.
 
 ## Inviting someone

@@ -71,12 +71,14 @@ one and neither can we. Rotate or revoke at any time; both are audited. The
 browser never holds one: the console reaches services through the server, and
 the token surface exists for your own code.
 
-## Encryption in transit
+## Traffic and edge security
 
 Traffic to the platform is served over TLS. The browser never talks to a
 backend service directly. Every request goes through the console's server,
 which reaches internal services over the private network carrying a service
 credential, so no service surface is exposed to the public internet.
+
+All proxy responses enforce strict security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and Content Security Policy nonces). Cross-origin embedding is explicitly blocked; Server-Sent Events (SSE) and AI Context Agent streams verify `Sec-Fetch-Site: same-origin` to prevent cross-site request forgery.
 
 ## Payments
 

@@ -8,8 +8,8 @@ The audit log records every mutating action taken within your organization or pr
 ## Accessing the audit log
 
 Audit logs can be inspected from the web console:
-- **Organization Audit Log**: Navigate to **Organization Settings** -> **Audit Log** (`/organization/audit-log`). Accessible only to organization **Owners** and **Admins**.
-- **Project Audit Log**: Navigate to **Project Settings** -> **Audit Log** (`/projects/[project-id]/audit-log`). Accessible to project **Owners**, **Admins**, and **Members**.
+- **Organization Audit Log**: Navigate to **Organization Settings** -> **Audit Log** (`/:organizationSlug/audit-log`). Accessible only to organization **Owners** and **Admins**.
+- **Project Audit Log**: Navigate to **Project Settings** -> **Audit Log** (`/:organizationSlug/:projectSlug/audit-log`). Accessible to project **Owners**, **Admins**, and **Members**.
 
 Audit logs are also queryable programmatically by the [AI Context Agent](/self-host/agent/) using the `audit_events` inspection tool.
 

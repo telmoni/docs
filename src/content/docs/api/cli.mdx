@@ -153,12 +153,13 @@ $ telmoni status --json
 
 ## Managing organizations
 
-If your account belongs to multiple organizations, use the `org` subcommand to inspect and switch active workspaces.
+If your account belongs to multiple organizations, use the `organization` (or `org`) subcommand to inspect and switch active workspaces.
 
 ### List organizations
 
 ```console
-$ telmoni org list
+$ telmoni organization list
+# (alias: telmoni org list)
 ```
 
 ```text
@@ -172,14 +173,15 @@ $ telmoni org list
 Switch your active default organization context for future commands:
 
 ```console
-$ telmoni org switch org_01j7xyz98765432100
+$ telmoni organization switch org_01j7xyz98765432100
+# (alias: telmoni org switch ...)
 Switched active organization to Staging Labs (org_01j7xyz98765432100)
 ```
 
-To temporarily target a specific organization for a single invocation without changing your default context, use the `TELMONI_ORG` environment variable:
+To temporarily target a specific organization for a single invocation without changing your default context, use the `TELMONI_ORGANIZATION` (or `TELMONI_ORG`) environment variable:
 
 ```console
-$ TELMONI_ORG=org_01j7xyz98765432100 telmoni status
+$ TELMONI_ORGANIZATION=org_01j7xyz98765432100 telmoni status
 ```
 
 ---
@@ -248,7 +250,7 @@ The CLI respects the following environment variables. Environment variables take
 |---|---|
 | `TELMONI_ENDPOINT` | Overrides the server endpoint (default: `https://telmoni.com`) |
 | `TELMONI_API_KEY` | The API key `telmoni login` uses when `--key` is not given, for CI/CD runs |
-| `TELMONI_ORG` | Overrides the active organization ID |
+| `TELMONI_ORGANIZATION` | Overrides the active organization ID (alias: `TELMONI_ORG`) |
 
 ---
 

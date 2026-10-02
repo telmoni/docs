@@ -12,6 +12,7 @@ stored durably in Telmoni before being dispatched to downstream destinations.
 | Kind | Raised when |
 |---|---|
 | `member_added` | A user accepts an invitation to the workspace |
+| `member_left` | A member leaves or is removed from a project |
 | `connector_connected` | A Slack, Discord, or webhook connector finishes setup |
 | `connector_disconnected` | A connector destination becomes unreachable or repeatedly fails |
 | `organization_alert` | An operational alert directed to the organization Owner |
@@ -32,7 +33,7 @@ Selecting **Mark read** marks notices as read across the feed view.
 ## Forwarding to external connectors
 
 Projects can forward notifications to third-party endpoints through connectors
-configured on the project's **Connectors** page (`/[projectId]/connectors`):
+configured on the project's **Connectors** page (`/:organizationSlug/:projectSlug/connectors`):
 
 - **[Slack and Discord](/integrations/slack-and-discord/)**: Direct channel
   notifications for workspace awareness.

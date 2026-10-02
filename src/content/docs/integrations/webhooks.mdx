@@ -5,7 +5,7 @@ description: Receiving and verifying a signed webhook. The body, the signature h
 
 A webhook is an HTTPS endpoint of yours that Telmoni posts a project's notices to
 as signed JSON. You connect one from the project's **Connectors** page
-(`/[projectId]/connectors`), choose which notices it receives, and it answers
+(`/:organizationSlug/:projectSlug/connectors`), choose which notices it receives, and it answers
 with a signing secret shown exactly once. This page is the receiver's side of that
 contract: what arrives, how to verify it, what your response means, and where it
 comes from.
