@@ -126,7 +126,6 @@ export default defineConfig({
           items: [
             { slug: "account/settings" },
             { slug: "account/privacy" },
-            
           ],
         },
         {

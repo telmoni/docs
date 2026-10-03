@@ -34,13 +34,13 @@ Open [http://localhost:4321](http://localhost:4321) in your browser to view the 
 src/
   content/
     docs/              Markdown (.md) and MDX (.mdx) source documents.
-      account/         Account settings, billing, and privacy.
+      account/         Account settings and privacy.
       api/             CLI guides, SDK documentation, and API references.
       getting-started/ First-run and sign-in tutorials.
       integrations/    Slack, Discord, notifications, and webhooks.
       legal/           Privacy policy, terms of service, and security disclosures.
       self-host/       Docker Compose, Kubernetes, and self-hosted topologies.
-      workspace/       Organizations, roles, and audit logging.
+      workspace/       Organizations, members, roles, audit logging, and billing.
       errors.mdx       The platform's error catalog.
   components/          Starlight overrides: font preloads, theme and corners switches.
   styles/              Custom CSS overrides and Telmoni graphite palette.
