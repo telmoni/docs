@@ -11,8 +11,9 @@ native email/password authentication, external identity providers, and device au
 On standalone and self-hosted instances using Telmoni's built-in authentication:
 
 - **Sign up**: Enter your email address, a password (minimum 8 characters), and
-  optionally a display name. Telmoni emails a confirmation link that expires in
-  24 hours. The account cannot be used until you verify your address.
+  optionally a display name. When the deployment sets `VERIFY_EMAIL=true`,
+  Telmoni emails a confirmation link that expires in 24 hours, and the account
+  cannot sign in until you have followed it.
 - **Sign in**: Authenticate with your email and password. Five consecutive
   incorrect attempts lock the account for 5 minutes (`crates/auth/src/db/credentials.rs`).
 - **Password reset**: Selecting **Forgot your password?** emails a single-use
@@ -22,20 +23,23 @@ Passwords are salted and hashed using Argon2id.
 
 ## Identity providers (OIDC)
 
-A deployment can configure external identity providers (such as Google, GitHub,
-or corporate OIDC / SAML single sign-on). In this mode, user authentication is
-handled by the provider. Telmoni validates the identity token, provisions the
-local account, and never handles the raw password.
+A deployment can configure an external OpenID Connect identity provider
+(`OIDC_ISSUER`), such as Okta, Keycloak, Microsoft Entra ID, or Google
+Workspace. In this mode, user authentication is handled by the provider. Telmoni
+validates the identity token, provisions the local account, and never handles the
+raw password.
 
 ## Device authentication (CLI)
 
 To sign in from terminal sessions, SSH hosts, or the [Telmoni CLI](/api/cli/), Telmoni implements
 the OAuth 2.0 Device Authorization Grant ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)):
 
-1. The CLI initiates the authorization flow via `telmoni login` and displays a confirmation code
-   alongside a verification URL (`/auth/device?code=...`).
-2. Open the verification URL in any browser where you are signed in.
-3. Confirm that the displayed user code matches what your terminal displays, then select
+1. The CLI initiates the authorization flow via `telmoni login`, displays a one-time code and
+   the address of the console's device page (`/auth/device`), and opens that page in your
+   browser with the code filled in (`/auth/device?code=...`).
+2. Open the page in any browser, on any machine. If you are not signed in there, the console
+   asks you to sign in first and returns you to the page.
+3. Confirm that the code on the page matches what your terminal displays, then select
    **Approve**.
 4. The CLI session is established immediately without transmitting credentials over
    SSH or logging passwords in terminal shell histories.

@@ -1,43 +1,47 @@
 ---
 title: Audit Log
-description: Cryptographically chained audit logging for enterprise compliance and security investigations.
+description: The append-only, hash-chained record of changes in an organization and its projects, who can read it, what it records, and how it is kept.
 ---
 
-The audit log records every mutating action taken within your organization or projects. It provides security teams and compliance auditors with an append-only, chronologically ordered ledger of who did what, when, and from where.
+The audit log records changes made within your organization and its projects: an append-only, chronologically ordered ledger of who did what, and when.
 
 ## Accessing the audit log
 
-Audit logs can be inspected from the web console:
-- **Organization Audit Log**: Navigate to **Organization Settings** -> **Audit Log** (`/:organizationSlug/audit-log`). Accessible only to organization **Owners** and **Admins**.
-- **Project Audit Log**: Navigate to **Project Settings** -> **Audit Log** (`/:organizationSlug/:projectSlug/audit-log`). Accessible to project **Owners**, **Admins**, and **Members**.
+Audit logs are read in the web console:
+- **Organization audit log**: the organization's **Audit log** page (`/{organization}/~/audit-log`). It holds every event in the organization, its projects' included. Open to the organization's **Owner** and **Admins**.
+- **Project audit log**: the project's **Audit log** page (`/{organization}/{project}/audit-log`), with the events written inside that project. Open to the project's **Owner** and **Admins**. A project **Member** cannot read it.
 
-Audit logs are also queryable programmatically by the [AI Context Agent](/self-host/agent/) using the `audit_events` inspection tool.
+Each page shows the latest 100 events. The [AI Context Agent](/self-host/agent/) reads the same events with its `audit_events` tool, under the same roles.
 
 ---
 
 ## Logged events
 
-Telmoni records mutations across identities, organizations, projects, and integrations:
+Telmoni records changes to organizations, projects, members, API keys, sessions, and connectors:
 
-| Category | Typical Events |
+| Category | Events |
 | :--- | :--- |
-| **Authentication & Sessions** | Password logins, OIDC SSO assertions, session revocations, password changes. |
-| **Organization Lifecycle** | Organization creation, renames, ownership transfers, deletion requests, and restorations. |
-| **Members & Permissions** | Member invitations, role promotions/demotions, member removals, and invitations declined or accepted. |
-| **API Keys & Integrations** | API token creation, token rotations, and token revocations. Slack, Discord, and webhook connector configurations. |
-| **Projects** | Project creation, project renames, project deletions, and project ownership transfers. |
+| **Organization** | Creation, renames, ownership transfers, deletion requests, and restorations. |
+| **Members** | Invitations sent, accepted, declined, and withdrawn; role changes; removals and departures. |
+| **API keys** | Creation, rotation, and revocation. |
+| **Sessions** | A session ended from the **Active sessions** panel. |
+| **Connectors** | Slack, Discord, and webhook connections made, changed, and removed. |
+| **Projects** | Creation, deletion, and transfers. |
+| **Account** | Email address changes and analytics consent changes, recorded in the organization you were working in. |
+
+Sign-ins and sign-outs, password changes, and project renames are not recorded.
 
 ---
 
 ## Event structure
 
-Every audit log entry contains structured metadata:
+Every audit log entry carries:
 
-- **Actor**: The authenticated user who initiated the action (user ID, name, email address). Actions initiated by automated platform routines or maintenance sweeps are recorded with actor `system`.
-- **Action**: A standardized identifier representing the mutation (e.g., `member.invited`, `api_key.created`, `project.deleted`).
-- **Target**: The resource acted upon (resource type and unique identifier).
-- **IP Address & User-Agent**: The network origin and client details of the request.
-- **Timestamp**: Recorded in UTC when the transaction committed.
+- **Actor**: The user ID of the person who acted. The platform's own routines act as `service:auth`, `service:operator`, or `service:deletion-saga`, and a change made from Slack's side as `external:slack`.
+- **Action**: One of `created`, `updated`, `deleted`, or `exported`.
+- **Resource**: The kind of thing acted on (`organization`, `project`, `member`, `token`, `session`, or `connector`) and its identifier, and the project it was written inside, if any.
+- **Details**: Metadata specific to the event, such as the name given or the role granted. The console shows it with the **Details** switch.
+- **Timestamp**: Taken in UTC when the event was written, inside the transaction that made the change. The console shows it in your local time.
 
 Entries are ordered chronologically, newest first.
 
@@ -45,15 +49,26 @@ Entries are ordered chronologically, newest first.
 
 Telmoni uses cryptographic hash chaining across audit log rows:
 
-- Each audit log row includes a SHA-256 hash calculated over the current event
-  and the hash of the preceding event, forming an unbroken chain per organization.
-- Audit rows are emitted inside the exact database transaction that applies the
-  mutation: if an operation fails or rolls back, no audit entry is written.
-- A nightly verification sweep walks each organization's hash chain to ensure no
-  records have been altered, skipped, or truncated out of sequence.
+- Each audit log row carries a SHA-256 hash over its own fields and the hash of
+  the preceding row, forming one chain per organization.
+- Audit rows are written inside the transaction that applies the change: if the
+  change fails or rolls back, no audit entry is written.
+- In a deployment with the hardened database roles, the services can insert and
+  read `audit.events` but neither update nor delete it.
+- A verification sweep walks each organization's chain every 24 hours while the
+  server runs (`telmoni sweep audit-verify` runs it on demand). It recomputes
+  every row's hash and checks every link to the row before it; a mismatch is
+  reported in the server log.
 
 ## Retention
 
-In the hosted platform, audit records are retained for at least **730 days** (2 years). 
+The platform never deletes audit rows. The table is partitioned into monthly
+tables by `created_at`, and `telmoni rotate` creates the current month's
+partition and the next three ahead of time and drops none (`drop_enabled:
+false` in `crates/shared/src/db/retention.rs`, which declares a 730-day window
+that nothing acts on today). An organization's chain also outlives the
+organization's deletion.
 
-For self-hosted instances, audit logs are partitioned into monthly tables (`created_at`). Retention is governed by your database backup policies and whether you run partition maintenance scripts. See [Production Maintenance](/self-host/production/#audit-log-partition-rotation) for details on scheduling `telmoni rotate`.
+For self-hosted instances, retention is therefore bounded by your database and
+its backups. See [Production](/self-host/production/#audit-log-partition-rotation)
+for scheduling `telmoni rotate`.

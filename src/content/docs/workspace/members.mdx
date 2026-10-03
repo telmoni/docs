@@ -11,28 +11,29 @@ a [role](/workspace/roles/) of **Admin** or **Member**.
 Telmoni supports two invitation scopes:
 
 1. **Organization invitations**: Invited from the organization's **Members** page
-   (`/:organizationSlug/members`). Grants an organization role (`Admin` or `Member`).
-   An invited Organization Admin gains administrative access across all projects
-   in the organization.
+   (`/{organization}/~/members`). Grants an organization role (`Admin` or
+   `Member`). An invited Organization Admin gains administrative access across
+   all projects in the organization.
 2. **Project invitations**: Invited from a project's **Members** page
-   (`/:organizationSlug/:projectSlug/members`). Grants access directly to that project as an
-   `Admin` or `Member` without granting organization-wide permissions.
+   (`/{organization}/{project}/members`). Grants access directly to that
+   project as an `Admin` or `Member` without granting organization-wide
+   permissions.
 
 ## Inviting someone
 
 An Owner or Admin can send invitations:
 
 1. Navigate to the **Members** page of the organization or project.
-2. Enter the recipient's email address and choose a role (**Admin** or
-   **Member**).
+2. Select **Invite member**, enter the recipient's email address, and choose a
+   role (**Admin** or **Member**).
 3. Telmoni emails an invitation link, and the console displays the link once so
    you can share it directly.
 
-**An invitation is created for any email address, whether or not they currently
-hold a Telmoni account.** Inviting someone never discloses whether the address is
-already registered.
+**An invitation is created for any email address that is not already on the
+roster, whether or not it currently holds a Telmoni account.** Inviting someone
+never discloses whether the address is already registered.
 
-Invitations expire automatically after **7 days** (`OFFER_TTL_DAYS`).
+Invitations expire automatically after **7 days** (`INVITE_TTL_DAYS`).
 
 ## Accepting or declining
 
@@ -42,12 +43,14 @@ Invitations can be answered in two places:
   in the console header and on your account's **Notifications** page
   (`/account/notifications`). You can accept or decline directly without
   leaving your current view.
-- **The email link**: Opens a verification view showing the organization or project
-  and the role granted. You must sign in or register with the exact email address
-  the invitation was sent to.
+- **The email link**: Opens a page naming who invited you, the organization (for
+  a project invitation, that it is for a project in that organization), and the
+  role granted, with **Accept invitation**. You must sign in or register with
+  the exact email address the invitation was sent to.
 
-Accepting an invitation records an audit event and posts a `member_added` notice
-to the workspace feed. Declining an invitation removes it immediately.
+Accepting an invitation records an audit event. Accepting a project invitation
+also posts a `member_added` notice to the project's feed. Declining an
+invitation ends it immediately.
 
 ## Withdrawing a pending invitation
 
@@ -69,13 +72,16 @@ An Owner or Admin can change a member's role or remove them from the
 
 ## Leaving an organization or project
 
-- Members and Admins can leave a project or organization from the **Members**
-  page or workspace overview.
+- Anyone but the Owner can leave an organization from its **Overview** page
+  (`/{organization}`), which also removes them from every project in it.
+- A project seat is given up with **Leave** on the organization's **Projects**
+  page (`/{organization}/~/projects`), which opens only for the organization's
+  Owner and Admins.
 - The Owner cannot leave until ownership is transferred to an Admin or the
   organization is deleted.
 
 ## Invitation limits
 
-An organization can send up to **20 invitations in any 24 hours** (including
-withdrawn ones). There is no hard limit on the total number of members in an
-organization.
+A project can send up to **20 invitations in any 24 hours** (`INVITE_DAILY_MAX`),
+withdrawn ones included. Organization invitations have no such count. There is
+no limit on the number of members in an organization or project.
