@@ -3,26 +3,26 @@ title: "API keys"
 description: "Creating, rotating, and revoking API keys that authenticate requests to the Telmoni API, with rotation grace periods and security practices."
 ---
 
-An API key (token) authenticates scripts, services, background workers, the [Telmoni CLI](/api/cli/), and the [Client SDKs](/api/sdks/) to the
-[Telmoni API](/api/reference/). API keys belong to a **Project** and are managed
-from the project's **API keys** page (`/:organizationSlug/:projectSlug/api-keys`).
+An API key (token) authenticates scripts, services, background workers, and the
+[Telmoni CLI](/api/cli/) to the [Telmoni API](/api/reference/). API keys belong
+to a **Project** and are managed from the project's **API keys** page
+(`/{organization}/{project}/api-keys`).
 
 ## Creating a key
 
-Project **Owners** and **Admins** can generate, rotate, and revoke API keys.
+Project **Owners** and **Admins** can mint, rotate, and revoke API keys.
 
 1. Navigate to your project's **API keys** page.
-2. Select **Create API key**.
-3. Provide a name describing what service uses the key.
-4. Set an expiration window (default is 90 days; custom durations or no expiry are
-   also supported).
+2. Select **Mint key**.
+3. Provide a name describing what service uses the key, and optionally a
+   description.
+4. Choose when it expires: 30 days, 90 days (the default), 1 year, or never.
 
 **The raw token is displayed exactly once upon creation.** Copy and store it in
 your secret manager immediately. Telmoni persists only a SHA-256 hash of the
 token; no user or operator can retrieve the secret later.
 
-Every key begins with the prefix `telmoni_` so that secret scanning tools and
-linters can detect accidental exposure.
+Every key begins with the prefix `telmoni_`.
 
 ## Using a key
 
@@ -32,14 +32,15 @@ Include the key as a bearer token in the HTTP `Authorization` header:
 $ curl -H "Authorization: Bearer $TELMONI_API_KEY" https://telmoni.com/v1/organization
 ```
 
-You can also pass it to the [Telmoni CLI](/api/cli/):
+You can also sign the [Telmoni CLI](/api/cli/) in with it, by flag or from the
+`TELMONI_API_KEY` environment variable:
 
 ```console
 $ telmoni login --key $TELMONI_API_KEY
-# Or set TELMONI_API_KEY in your environment
 ```
 
-Or configure it in any of our official [Client SDKs](/api/sdks/):
+The [client SDKs](/api/sdks/) hold a key in their configuration, though they do
+not call the API yet:
 
 ```ts
 import { Telmoni } from 'telmoni';
@@ -47,15 +48,17 @@ import { Telmoni } from 'telmoni';
 const client = new Telmoni({ apiKey: process.env.TELMONI_API_KEY });
 ```
 
-A token is scoped to its project and resolves to the project's parent
-organization on `/v1` routes. A token remains active regardless of whether the
-individual user who created it leaves the project.
+A key is minted in a project, is deleted with it, and follows it if the project
+is transferred to another organization. On `/v1` it acts for the project's
+organization: `GET /v1/members` lists the whole organization's roster. A key
+remains active regardless of whether the individual user who created it leaves
+the project.
 
 ## Who can see keys
 
-Project **Admins** and **Members** can view the list of active keys: each key's
-name, creation date, last used timestamp, and expiration date. The secret itself
-is never visible after creation.
+Anyone on the project (Owner, Admin, or Member) can view the list of active
+keys: each key's name, creation date, last-used date, and expiration date. The
+secret itself is never visible after creation.
 
 ## Rotating a key
 
@@ -65,7 +68,8 @@ To replace an existing key without downtime, select **Rotate** on its row on the
 Rotating a key produces a new `telmoni_` token (shown once) and keeps the
 previous token valid for a **24-hour grace period**. This window ensures you can
 safely update your environments, services, and pipelines before the old key is
-retired.
+retired. The replacement expires 90 days after rotation, whatever the old key's
+expiry was.
 
 Rotation is recorded as an audit event in the project's
 [audit log](/workspace/audit-log/).

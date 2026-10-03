@@ -32,7 +32,7 @@ yet, so each installs from the
     const custom = new Telmoni({
       endpoint: 'https://telmoni.com',
       apiKey: process.env.TELMONI_API_KEY,
-      organizationId: 'org_01j7abcde987654321',
+      organizationId: 'org_019a0b8c3f2e7d41',
     });
     ```
   </TabItem>
@@ -46,7 +46,7 @@ yet, so each installs from the
         Config(
             endpoint="https://telmoni.com",
             auth_token="telmoni_...",
-            organization_id="org_01j7abcde987654321",
+            organization_id="org_019a0b8c3f2e7d41",
         )
     )
     ```
@@ -65,7 +65,7 @@ yet, so each installs from the
     	custom := telmoni.New(telmoni.Config{
     		Endpoint:       "https://telmoni.com",
     		AuthToken:      "telmoni_...",
-    		OrganizationID: "org_01j7abcde987654321",
+    		OrganizationID: "org_019a0b8c3f2e7d41",
     	})
 
     	_, _ = fromEnv, custom
@@ -81,7 +81,7 @@ yet, so each installs from the
 
         let custom = Telmoni::new(Config::new(
             "https://telmoni.com",
-            Some("org_01j7abcde987654321".to_string()),
+            Some("org_019a0b8c3f2e7d41".to_string()),
             Some("telmoni_...".to_string()),
         ));
 
@@ -100,5 +100,10 @@ yet, so each installs from the
 | Variable | Description | Default |
 |---|---|---|
 | `TELMONI_ENDPOINT` | The Telmoni platform endpoint | `https://telmoni.com` |
-| `TELMONI_API_KEY` | An API key, created in project settings | None |
-| `TELMONI_ORGANIZATION` | The active organization ID or slug (alias: `TELMONI_ORG`) | None |
+| `TELMONI_API_KEY` | An [API key](/api/api-keys/), created on a project's API keys page | None |
+| `TELMONI_ORG` | The organization's ID (`org_...`) | None |
+
+An SDK holds the organization exactly as the variable gives it. It has no
+session to look a [slug](/workspace/organizations-and-projects/#slugs) up in,
+as the [CLI](/api/cli/#managing-organizations) does, so the value has to be the
+ID.

@@ -56,6 +56,7 @@ Retrieves the organization associated with the presented token.
 ```json
 {
   "organization_id": "org_019a0b8c3f2e7d41",
+  "slug": "acme-corp",
   "name": "Acme Corp",
   "owner": {
     "email": "you@example.com",
@@ -65,8 +66,13 @@ Retrieves the organization associated with the presented token.
 ```
 
 - `organization_id`: The unique, immutable identifier of the organization.
+- `slug`: The first segment of the organization's console URLs (`/acme-corp`).
+  A rename moves it (see [Slugs](/workspace/organizations-and-projects/#slugs));
+  `organization_id` does not move.
 - `name`: Display name of the organization, or `null` if not yet named.
-- `owner`: Details of the organization Owner (`email` and `display_name`).
+- `owner`: The organization Owner's `email` and `display_name` (`null` when
+  they have not set one). `owner` itself is `null` if the organization has no
+  owner on record.
 
 ## `GET /v1/members`
 
@@ -82,7 +88,7 @@ followed by members ordered by join date, newest first.
   "members": [
     {
       "id": "019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47",
-      "member_id": "user_01J...",
+      "member_id": "user_7Hq3kZ2mN8vLp4Xs",
       "email": "you@example.com",
       "display_name": "Sam Rivera",
       "role": "owner",
@@ -92,7 +98,7 @@ followed by members ordered by join date, newest first.
     },
     {
       "id": "019a3d52-7b10-7c9e-a4f1-2d8e6b0c9a13",
-      "member_id": "user_01K...",
+      "member_id": "user_2bR9tC5wQ1yJm6Fd",
       "email": "alex@example.com",
       "display_name": null,
       "role": "admin",
@@ -106,7 +112,7 @@ followed by members ordered by join date, newest first.
 
 - `id`: Unique identifier of the membership record.
 - `member_id`: The user's system identifier (`user_...`).
-- `email`: Member's verified email address.
+- `email`: Member's email address.
 - `display_name`: User's display name, or `null`.
 - `role`: The member's role (`owner`, `admin`, or `member`).
 - `created_at`: ISO-8601 UTC timestamp of when the member joined.
@@ -116,9 +122,12 @@ followed by members ordered by join date, newest first.
 
 ## Errors
 
-Error responses are returned as RFC 9457 problem documents
-(`application/problem+json`) with structured error types. Full details and status
-codes are cataloged in [Errors](/errors/).
+Error responses are RFC 9457 problem documents (`application/problem+json`)
+with structured error types, except the rejected-token `401` above and the
+`503` answers listed under
+[answers that are not problem documents](/errors/#answers-that-are-not-problem-documents).
+Full details and status codes are cataloged in [Errors](/errors/).
 
-If public API access is toggled off for your organization, requests respond with
-`503 Service Unavailable` and the `/errors/tenant/feature-off` problem type.
+If the API is switched off for your organization or the deployment, or your
+organization is not in the beta, requests respond with `503 Service Unavailable`
+and the `/errors/tenant/feature-off` problem type.
