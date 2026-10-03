@@ -11,29 +11,31 @@ stored durably in Telmoni before being dispatched to downstream destinations.
 
 | Kind | Raised when |
 |---|---|
-| `member_added` | A user accepts an invitation to the workspace |
-| `member_left` | A member leaves or is removed from a project |
+| `member_added` | Someone accepts an invitation to the project |
+| `member_left` | A member leaves a project or is removed from it, including when they leave or are removed from its organization |
 | `connector_connected` | A Slack, Discord, or webhook connector finishes setup |
-| `connector_disconnected` | A connector destination becomes unreachable or repeatedly fails |
-| `organization_alert` | An operational alert directed to the organization Owner |
+| `connector_disconnected` | A connection stops: the vendor reports the channel or installation gone, a webhook answers `410` or fails ten sends in a row, or the Telmoni app is removed from a Slack workspace |
+| `organization_alert` | An alert for the organization's Owner, raised by services built on the open core; the core itself raises none |
 
 ## Where you read them
 
 - **Project feed**: The **Recent activity** section of each project's
-  **Overview** page surfaces project notices. Project Admins and Members can
-  read the feed.
-- **Organization feed**: The organization's **Overview** page displays
-  organization-level notices and alerts.
-- **Invitations**: Direct workspace invitations appear separately in the console
-  header bell and on your account's **Notifications** page
-  (`/account/notifications`).
+  **Overview** page surfaces project notices. Every project role can read the
+  feed.
+- **Organization feed**: The organization's **Overview** page shows the
+  organization's own notices (`organization_alert`) to its Owner and Admins.
+- **Invitations and offers**: Invitations to you, and offers of an organization
+  or a project, appear separately in the console header bell and on your
+  account's **Notifications** page (`/account/notifications`).
 
-Selecting **Mark read** marks notices as read across the feed view.
+Selecting **Mark read** marks every unread notice in that feed as read, for
+everyone who reads it.
 
 ## Forwarding to external connectors
 
 Projects can forward notifications to third-party endpoints through connectors
-configured on the project's **Connectors** page (`/:organizationSlug/:projectSlug/connectors`):
+configured on the project's **Connectors** page
+(`/{organization}/{project}/connectors`):
 
 - **[Slack and Discord](/integrations/slack-and-discord/)**: Direct channel
   notifications for workspace awareness.

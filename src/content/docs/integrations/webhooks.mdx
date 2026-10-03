@@ -1,14 +1,14 @@
 ---
 title: Webhooks
-description: Receiving and verifying a signed webhook. The body, the signature header, the replay window, choosing events, retries, the delivery log, rotation, and the addresses to allowlist.
+description: Receiving and verifying a signed webhook. The body, the signature header, the replay window, choosing events, retries, the delivery log, and rotation.
 ---
 
 A webhook is an HTTPS endpoint of yours that Telmoni posts a project's notices to
 as signed JSON. You connect one from the project's **Connectors** page
-(`/:organizationSlug/:projectSlug/connectors`), choose which notices it receives, and it answers
-with a signing secret shown exactly once. This page is the receiver's side of that
-contract: what arrives, how to verify it, what your response means, and where it
-comes from.
+(`/{organization}/{project}/connectors`), choose which notices it receives, and
+it answers with a signing secret shown exactly once. This page is the receiver's
+side of that contract: what arrives, how to verify it, and what your response
+means.
 
 ## What you receive
 
@@ -17,11 +17,11 @@ this shape and nothing the notice did not carry:
 
 ```json
 {
-  \"id\": \"019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47\",
-  \"kind\": \"member_added\",
-  \"title\": \"Sam joined\",
-  \"body\": \"Sam accepted your invitation.\",
-  \"sent_at\": \"2027-01-15T12:00:00Z\"
+  "id": "019a0b8c-3f2e-7d41-9c5a-6e2b1f0d8a47",
+  "kind": "member_added",
+  "title": "Sam joined",
+  "body": "Sam accepted your invitation.",
+  "sent_at": "2027-01-15T12:00:00Z"
 }
 ```
 
@@ -58,11 +58,14 @@ export function verifyTelmoniSignature(secret, header, rawBody) {
   let t;
   const candidates = [];
   for (const part of header.split(",")) {
-    const [key, value] = part.split("=", 2);
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const key = part.slice(0, eq).trim();
+    const value = part.slice(eq + 1).trim();
     if (key === "t") t = Number(value);
     else if (key === "v1") candidates.push(value);
   }
-  if (!Number.isInteger(t) || candidates.length === 0) return false;
+  if (t === undefined || !Number.isInteger(t) || candidates.length === 0) return false;
 
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - t) > REPLAY_TOLERANCE_SECS) return false;
@@ -148,9 +151,11 @@ change applies from the next notice. The body's `kind` is one of:
 
 | `kind` | Sent when |
 | --- | --- |
-| `member_added` | Someone accepted an invitation to the workspace. |
+| `member_added` | Someone accepted an invitation to the project. |
+| `member_left` | Someone left or was removed from the project. |
 | `connector_connected` | A destination was connected to the project. |
 | `connector_disconnected` | A destination stopped accepting notices. |
+| `organization_alert` | An alert for the organization's owner, from a service built on the open core. |
 
 Slack and Discord channels always receive every kind.
 
@@ -173,10 +178,11 @@ a proxy you are reconfiguring; return 404 or 503 and let the retries carry you.
 A disconnected webhook is brought back by rotating its secret from the
 Connectors page.
 
-**Ten failed deliveries in a row** (ten notices, not ten attempts at one) also
-disconnect the endpoint, and the project's other channels are told. One success
-anywhere in that run resets the count. A resend from the delivery log does not
-count toward it.
+**Ten failed sends in a row** also disconnect the endpoint, and the project's
+other channels are told. Every attempt counts, so two notices that each run
+through their five attempts trip it; one bad hour on one notice does not. One
+success anywhere in that run resets the count. A failed resend from the
+delivery log does not count toward it.
 
 **Delivery is at-least-once.** A retry after a timeout you had actually served
 is a duplicate you will see, and so is a resend of something you already have.
@@ -186,13 +192,16 @@ is a duplicate you will see, and so is a resend of something you already have.
 Rotate from the webhook's row on the **Connectors** page. A new secret is
 generated and displayed once.
 
-During rotation, Telmoni keeps both the old secret and the new secret active for
-a short overlap window, sending two `v1` signatures in the `Telmoni-Signature`
-header. This ensures you can deploy your application with the new secret
-without missing inbound deliveries.
+You choose how long the old secret keeps signing beside the new one: **Keep for
+24 hours** (the default), **Keep for 1 hour**, or **Stop immediately** for a
+secret that has leaked. During the overlap, the `Telmoni-Signature` header
+carries two `v1` signatures, the new secret's first, so you can deploy your
+application with the new secret without missing inbound deliveries.
 
 ## Delivery logs and resending
 
-Every delivery attempt is stored for **30 days**. From the **Connectors** page,
-you can inspect past deliveries, view response status codes and timing, and
-manually trigger a **Resend** for any historical delivery.
+Every delivery is kept, with each of its attempts, for **30 days** after it was
+last delivered or failed. From the **Connectors** page, you can inspect past
+deliveries, view response status codes and timing, and trigger a **Resend** of
+one. A delivery can be resent up to ten times, while its webhook is connected.
+Disconnecting a webhook deletes its log.

@@ -8,8 +8,8 @@ directly into a specified channel.
 
 Connectors are configured per project. Project **Owners** and **Admins** can
 connect and manage destinations from the project's **Connectors** page
-(`/:organizationSlug/:projectSlug/connectors`). Project **Members** can view active connectors and
-their delivery histories.
+(`/{organization}/{project}/connectors`). Project **Members** can view the
+project's connectors and their delivery histories.
 
 ## Connecting a channel
 
@@ -24,38 +24,42 @@ Authorization handshakes must be completed within 10 minutes.
 
 ## Permissions and security
 
-Telmoni requests the minimal permissions required to post inbound messages:
+Telmoni requests one scope from each vendor, the one that lets it post into the
+channel you pick:
 - **Slack**: `incoming-webhook`
 - **Discord**: `webhook.incoming`
 
-These permissions restrict Telmoni to posting messages into the exact channel
-selected. Telmoni cannot view chat messages, inspect other channels, or enumerate
-workspace members. All access credentials and webhook targets are stored
+It requests no scope for reading messages, listing channels, or listing
+workspace members. The grants and webhook targets it receives are stored
 encrypted at rest.
 
 ## Delivery and retries
 
-Notices are sent immediately upon creation. If a delivery attempt fails due to a
-transient network error or provider rate limit:
+Notices are sent as soon as they are created. If a delivery attempt fails due to
+a transient network error or provider rate limit:
 
-- Telmoni retries delivery up to **5 times** using exponential backoff with
-  jitter, up to a maximum delay of 24 hours.
-- If the provider responds with a `Retry-After` header, Telmoni respects the
-  requested delay.
+- Telmoni makes up to **5 attempts** in all: after 30 seconds, then 2, 8, and 32
+  minutes.
+- If the provider answers with a `Retry-After` header (or, on Discord, a
+  `retry_after` in the body), Telmoni waits at least that long before the next
+  attempt, up to a day.
 
-## Disconnection and breaker behavior
+## Disconnection
 
-If a destination endpoint is permanently removed (e.g., the channel is deleted,
-the incoming webhook is removed, or the Telmoni application is uninstalled from
-the workspace), Telmoni marks the connector as disconnected and dispatches a
-`connector_disconnected` event to the workspace feed.
+If the vendor answers that the destination is gone (the channel was deleted or
+archived, the incoming webhook was removed, or the Telmoni application was
+uninstalled from the workspace), Telmoni marks the connector as disconnected,
+fails the notices still queued for it, and posts a `connector_disconnected`
+notice to the project's feed and its other connectors.
 
 Removing the Telmoni application from a Slack workspace disconnects all channels
-connected to that Slack workspace. The event is recorded in the project's
-[audit log](/workspace/audit-log/) with Slack listed as the actor.
+connected to that Slack workspace. The event is recorded in the organization's
+[audit log](/workspace/audit-log/) with `external:slack` as the actor.
 
 ## Disconnecting manually
 
 To remove a connection, select **Disconnect** on the connector's row on the
-**Connectors** page. Telmoni invalidates the local grant, informs the upstream
-vendor, and logs the action in the audit log.
+**Connectors** page. Telmoni deletes the connection with its queue and delivery
+log, records the action in the project's audit log, and tells the vendor: a
+Discord webhook is deleted, and the Slack app is uninstalled from the workspace
+once no other connection on the platform uses it.
