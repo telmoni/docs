@@ -9,15 +9,14 @@ Telmoni open core is designed to be fully self-hosted on your own infrastructure
 
 ## System architecture
 
-The Telmoni deployment consists of five primary components:
+The Telmoni deployment consists of six components:
 
 ```mermaid
 flowchart TD
     Client["Browser / API Client"] --> ReverseProxy["Reverse Proxy (Caddy / Nginx)"]
     ReverseProxy -->|Port 3000| Web["Web Console (Next.js BFF)"]
-    ReverseProxy -->|Port 8082 /v1| Server["Core Backend (Rust / Tokio)"]
 
-    Web -->|Internal HTTP| Server
+    Web -->|Internal HTTP, service secret| Server["Core Backend (Rust / Tokio)"]
     Web -->|Rate limiting & Sessions| Redis[("Redis 7 (Alpine)")]
 
     Server -->|Schema DDL & Migrations| Migrator["Migrator Engine"]
@@ -30,11 +29,11 @@ flowchart TD
 
 ### Component breakdown
 
-1. **Core Backend (`telmoni serve`)**: A high-performance, single-binary Rust service built on Axum and Tokio. It exposes the REST and internal service APIs on port `8082`, executes tenant-isolated database queries with Row-Level Security (RLS), signs webhook payloads, dispatches notifications, and runs automated maintenance loops (retention purges, soft-deletion sagas, and nightly audit verification walks).
+1. **Core Backend (`telmoni serve`)**: A high-performance, single-binary Rust service built on Axum and Tokio. It serves the `/v1` API and the internal service API on port `8082`, both only to callers carrying the service secret, so every request from outside, the public API's included, enters through the web console. It executes tenant-isolated database queries with Row-Level Security (RLS), signs webhook payloads, dispatches notifications, and runs automated maintenance loops (retention purges, soft-deletion sagas, and an audit verification walk every 24 hours).
 2. **Web Console (`telmoni/web`)**: A Next.js application that serves the dashboard, handles server-side session cookies (sealed with `AUTH_SECRET`), proxies authenticated requests to the backend server, and performs edge rate limiting.
 3. **PostgreSQL 17 with `pgvector`**: The primary relational store. Telmoni uses native partitioning for the audit ledger and the `vector` extension for semantic document search. In production, each service module (`auth`, `notifications`, `agent`, `migrator`) connects using a hardened, least-privilege database role.
-4. **Redis 7**: An in-memory cache used by the web console for sliding-window rate limiting and session synchronization. Bearer tokens are SHA-256 hashed before reaching Redis to prevent token exposure in cache memory. Because rate-limit windows carry microsecond expirations (`PEXPIRE`), Redis requires no disk snapshots (`--save ""`).
-5. **Migrator (`telmoni migrate`)**: A one-shot CLI command packaged within the backend binary. It executes pending database migrations and applies owner grants before the server boots.
+4. **Redis 7**: An in-memory store used only by the web console, for its sliding-window rate limits, its list of signed-out sessions, the channels behind the console's live event stream, and the announcement banner. On the `/v1` and `/cli` routes a rate-limit bucket is keyed by a SHA-256 digest of the `Authorization` header, so the token itself is never a Redis key. Rate-limit windows expire in milliseconds (`PEXPIRE`), and the Compose file runs Redis without disk snapshots (`--save ""`).
+5. **Migrator (`telmoni migrate`)**: A one-shot CLI command packaged within the backend binary. It executes pending database migrations and applies the object grants before the server boots.
 6. **AI Agent & Embeddings (Optional)**: Telmoni includes an embedded context assistant. For completely offline or air-gapped deployments, an optional Ollama sidecar serves `nomic-embed-text` embeddings and local LLM inferences. Hosted providers (Anthropic Claude, OpenAI, or Google Gemini) can be configured via environment variables.
 
 ---

@@ -78,7 +78,20 @@ backend service directly. Every request goes through the console's server,
 which reaches internal services over the private network carrying a service
 credential, so no service surface is exposed to the public internet.
 
-All proxy responses enforce strict security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and Content Security Policy nonces). Cross-origin embedding is explicitly blocked; Server-Sent Events (SSE) and AI Context Agent streams verify `Sec-Fetch-Site: same-origin` to prevent cross-site request forgery.
+Every response from the console carries a fixed set of headers from its
+configuration: `Strict-Transport-Security` (two years, `includeSubDomains`,
+`preload`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy`
+that denies camera, microphone and geolocation. Pages also carry a Content
+Security Policy minted per request: scripts run only from the console's own
+origin with that request's nonce, connections go only to its origin, frames are
+refused in both directions (`frame-src 'none'`, `frame-ancestors 'none'`), and
+forms may post only to the console and to the identity provider's origins. The
+routes a page's script calls directly read the browser's `Sec-Fetch-Site`
+header: the event stream, the agent's turns and the session heartbeat answer
+`403` to a request from another site, `GET /auth/logout` from another site
+redirects home without signing out, and the `/cli` door refuses any request
+that carries the header at all, since the CLI sends none.
 
 ## Payments
 

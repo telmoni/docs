@@ -171,7 +171,7 @@ telmoni sweep deletion
 # Verify cryptographic hash chain across the audit ledger
 telmoni sweep audit-verify
 
-# Delete expired API tokens, stale invitations, revoked sessions and spent sign-in grants
+# Delete revoked API keys, stale invitations, revoked sessions and spent sign-in grants
 telmoni sweep retention
 
 # Re-embed every agent passage that a previous EMBEDDINGS_MODEL embedded
@@ -184,17 +184,21 @@ If an organization needs to be terminated or recovered manually by a platform ad
 
 ```bash
 # Immediately suspend an organization and enter the 14-day soft-deletion window
-telmoni terminate org_01j7abcde987654321
+telmoni terminate org_019a0b8c3f2e7d41
 
 # Restore a suspended organization within the 14-day grace period
-telmoni restore org_01j7abcde987654321
+telmoni restore org_019a0b8c3f2e7d41
 ```
 
 ---
 
 ## Reverse proxy configuration
 
-In production, place Telmoni behind a reverse proxy that terminates TLS, enforces HTTP/2 or HTTP/3, and handles WebSocket upgrades. Never expose internal ports `3000` or `8082` directly to the public internet.
+In production, place Telmoni behind a reverse proxy that terminates TLS and forwards to the web console on port `3000`. Every request from outside enters there, the `/v1` API's included: the server on port `8082` answers only callers carrying the service secret. Never expose either port directly to the public internet.
+
+**What the console expects of the proxy.** The console's rate limiter takes each caller's address from `X-Forwarded-For`: the second address from the end when the header holds two or more, the only address when it holds one, and `X-Real-IP` when it is absent. The proxy in front of the console must therefore overwrite `X-Forwarded-For` with the address it saw the client at, as both configurations below do, rather than append to what the client sent: behind a single appending proxy, a client that sends its own `X-Forwarded-For` chooses the address it is metered as. (The second-from-the-end rule exists for a load balancer that appends the client's address and then its own, as Google's does.)
+
+The console's live updates (server-sent events) and the agent's streamed answers are marked `X-Accel-Buffering: no`, so Nginx passes them through unbuffered. The console uses no WebSockets.
 
 <Tabs>
   <TabItem label="Caddy (Recommended)">
@@ -216,7 +220,7 @@ In production, place Telmoni behind a reverse proxy that terminates TLS, enforce
     ```
   </TabItem>
   <TabItem label="Nginx">
-    Standard Nginx configuration with TLS and WebSocket/SSE support:
+    Nginx with TLS, forwarding to the console. `X-Forwarded-For` is set to `$remote_addr`, the address Nginx saw the client at, never to `$proxy_add_x_forwarded_for`, which would append it to whatever the client sent:
 
     ```nginx
     # /etc/nginx/sites-available/telmoni.conf
@@ -241,21 +245,19 @@ In production, place Telmoni behind a reverse proxy that terminates TLS, enforce
             proxy_pass http://127.0.0.1:3000;
             proxy_http_version 1.1;
 
-            # WebSocket and SSE support
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Forwarded-Proto $scheme;
 
-            # Timeouts for real-time streams
+            # Timeouts for the event streams
             proxy_read_timeout 86400s;
             proxy_send_timeout 86400s;
         }
     }
     ```
+
+    If Nginx itself sits behind another proxy or load balancer, `$remote_addr` is that hop's address and every client shares one rate-limit bucket; use Nginx's `real_ip` module (`set_real_ip_from`, `real_ip_header`) so that `$remote_addr` is the client's address again.
   </TabItem>
 </Tabs>
 
