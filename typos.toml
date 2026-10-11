@@ -1,0 +1,7 @@
+# Configuration for crate-ci/typos, which CI runs over every file here.
+
+[default]
+extend-ignore-re = [
+  # Hex ids (span and trace ids, commit shas) trip the dictionary.
+  "\\b[0-9a-f]{7,40}\\b",
+]
