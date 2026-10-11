@@ -1,0 +1,143 @@
+---
+title: "Privacy FAQ"
+description: "Short answers on the hosted service's handling of your data: who is responsible, where it lives, what telemetry holds, what is never stored, how end-user ids are hashed, deletion and retention, subprocessors, the data processing terms, and your rights."
+---
+
+Short answers, each pointing at the page that binds us. The
+[Privacy Policy](/docs/legal/privacy-policy) is the document; this page is a
+way into it.
+
+## Who is responsible for my data?
+
+Telmoni LLC, a Missouri limited liability company in Kansas City, Missouri,
+United States, provides the hosted service. For your account, billing and
+operational data it is the controller. For the content you submit —
+your organization's records and the telemetry your agents send — you are the
+controller, or a processor for your own customers, and Telmoni acts as your
+processor, under the
+[data processing terms](/docs/legal/privacy-policy#data-processing-terms) in
+the Privacy Policy. Reach us at hello@telmoni.com.
+
+## Where is my data stored?
+
+In the United States, on Google Cloud, in the `us-central1` region. No other
+region is offered today. Requests the console agent makes to its model
+provider may be processed outside it, as the
+[Subprocessors](/docs/legal/subprocessors) page states, and so may the
+service's logs.
+
+## Do you train models on my data, or sell it?
+
+No. We do not sell your data, share it for cross-context behavioural
+advertising, use it for advertising, or train machine-learning models on it.
+The console agent's model provider, on its paid terms, does not train on the
+requests either.
+
+## Do you store my prompts and completions?
+
+No. Ingest drops prompts, completions, system instructions, tool inputs and
+outputs, retrieved documents, error messages and every attribute that names a
+person before anything is stored, on every project: the only content mode
+offered today is `off`. The [ingest page](/docs/api/ingest#what-is-dropped-at-the-door)
+lists every field, and a project's **Privacy** page in the console shows the
+same list beside its content mode.
+
+## What does telemetry hold, then?
+
+Metadata: each run's id, the agent's name, the models and tools it called,
+token counts, timings, statuses, an error's type, the names of its steps, the
+tags you set, the id you give a conversation, and the id you give the end
+user a run served. The names, tags and conversation ids are yours to choose:
+keep personal data out of them, since they are stored as sent.
+
+## How are end-user ids handled?
+
+The one end-user identifier telemetry keeps, `user.id`, is replaced before it
+is stored by its HMAC-SHA-256 under a key made for the project at its first
+export, the first 16 bytes of it, and the key is sealed under a managed key
+service. The plain id is never stored, a stored hash names nobody outside the
+code that sent it, and one project's hashes match no other's. The attributes
+that name a person — `user.name`, `user.email`, `user.full_name` — are
+dropped.
+
+## How do I delete data, and how fast does it go?
+
+Deleting a project removes it at once and marks every span and hour of totals
+it sent deleted in the same purge, so that within moments nothing reads them
+again; the nightly maintenance removes them from disk. Deleting an organization closes it at
+once and erases it after a 15-minute grace, usually within the hour. Deleting
+your account erases your sessions, memberships, exports and your record at
+the identity provider. Deleted data then leaves our backups as they expire,
+within a further 30 days. [Data deletion](/docs/workspace/data-deletion) says
+what each deletion removes; the audit log is the one thing kept through all
+of them.
+
+## How long do you keep data?
+
+Telemetry for 360 days after it arrives, and its hourly totals for 13 months,
+while the project is active. Agent conversations for 90 days after their last
+use, audit log exports for 7 days, operational logs for 30 days, and the
+audit log without a time limit. [Data retention](/docs/workspace/data-retention)
+has every window.
+
+## Who else processes my data?
+
+Google Cloud for the infrastructure, Stripe for billing, WorkOS for sign-in,
+Resend for transactional email, and Google's Gemini API for the console
+agent's model and embeddings. Each receives only what its function requires.
+The [Subprocessors](/docs/legal/subprocessors) page lists them with their
+purpose and location, and we give at least 30 days' notice before adding or
+replacing one.
+
+## Is there a data processing agreement?
+
+Yes. The data processing terms in the Privacy Policy form part of the Terms
+of Service and apply whenever you process personal data governed by
+data-protection law through the service. The European Commission's Standard
+Contractual Clauses, Modules Two and Three, are incorporated for transfers
+out of the EU, the UK International Data Transfer Addendum for the UK, and
+the clauses as adapted to Swiss law for Switzerland. If your procurement
+process needs a countersigned agreement, write to hello@telmoni.com.
+
+## Do you use cookies or analytics?
+
+Only strictly necessary cookies: to keep you signed in, to remember the
+organization you are working in, and one to remember a collapsed sidebar.
+There are no advertising cookies or third-party trackers, and no
+product-analytics provider is configured: usage events stay in our own logs.
+
+## Can I export my data?
+
+The audit log exports as JSON or CSV from the organization's **Audit log**
+page, and the API reads your organization's identity and a project's roster.
+Telemetry has no export today; the console reads it as traces,
+conversations and users.
+
+## What are my rights, and how do I exercise them?
+
+In the console: see and change your account and organization information,
+revoke API keys, and delete your account or an organization you own. Beyond
+that, depending on where you live, you may have rights under the GDPR or US
+state privacy laws to confirm, access, correct, delete or port your personal
+information; write to hello@telmoni.com, and we will not discriminate against
+you for asking. In the EU or UK you may also complain to your data-protection
+authority.
+
+## Will you tell me about a breach?
+
+Yes: without undue delay after we become aware of a personal-data breach
+affecting your personal data, with enough information for you to meet your
+own notification obligations.
+
+## Can children use the service?
+
+No. The service is not directed to children under 16, and you must be at
+least 18 to use it.
+
+## Related documents
+
+- [Privacy Policy](/docs/legal/privacy-policy)
+- [Terms of Service](/docs/legal/terms-of-service)
+- [Subprocessors](/docs/legal/subprocessors)
+- [Security](/docs/legal/security) and the [Security FAQ](/docs/legal/security-faq)
+- [Data retention](/docs/workspace/data-retention) and [Data deletion](/docs/workspace/data-deletion)

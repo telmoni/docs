@@ -1,0 +1,234 @@
+---
+title: "Security"
+description: "How the hosted service isolates tenants, holds secrets, controls access, encrypts traffic, audits changes and deletes data, and how to report a vulnerability."
+---
+
+The platform holds your organization, the people in it, the record of what
+they did, and the telemetry your agents send, kept as metadata. It runs no
+workload for you, and the only credentials it holds on your behalf are the
+destinations you connected for it to post to, so isolation, what ingest drops
+at the door and audit are most of the security surface. This page describes
+the controls as enforced today.
+
+## Tenant isolation
+
+The organization is the unit of tenancy, the thing that pays, and the only
+container: it holds your projects, members, API keys and connected
+destinations. Tenant-scoped tables have row-level security enabled and forced
+in the database, keyed to the one organization the transaction is bound to:
+the one the console names for the request, honoured only when the person your
+verified session names is a member of it, and never taken from a request body. A query not bound to a tenant matches
+no rows, so the failure mode is empty rather than wide. Your own account's
+rows (your identity, sessions and confirmation codes) are isolated the same
+way, to the person your verified session names. The roles the server's modules
+connect as cannot bypass these policies; only the migration role, which owns
+the tables and serves no request, can.
+
+The cross-tenant maintenance paths (the deletion, retention and audit-export
+sweeps, the notification delivery worker, the check of an API key, sign-in,
+and the console agent's indexer) run through dedicated `NOLOGIN` database
+roles, one per module, each granted table by table in its own module's schema
+and admitted by policies that name it: a lane spans tenants within its module and
+reaches no other module's tables. The test suite checks these policies as roles
+without bypass, because a superuser sees every row and would make a broken
+policy look correct.
+
+Telemetry lives in a column store of its own, keyed by project: a row policy
+there holds the user the server reads as to the projects a read names, every
+read is bounded by a window of days, and the user that owns the tables runs
+the migration and the nightly rotation and serves no request.
+
+## Secrets
+
+On the hosted service, the platform asks for no password and no API key of
+yours. The credentials it holds on your behalf are the channel grants you
+authorise through Slack (issued by Slack for a channel you pick in its own
+dialog, never typed, revocable from either end, with the installation's token,
+which is kept only to uninstall the app) and, if you
+connect a webhook, the HTTPS endpoint you give us together with a signing
+secret we mint for it and show you exactly once.
+
+Each of those is sealed with AES-256-GCM before it reaches a row, under a key
+that is that row's alone, with the row's own identifier bound in as associated
+data, so a value copied into another row does not open. On the hosted service,
+the key that wraps those row keys is held in a managed key service and never in
+the database or the service's environment, so a database backup or a replica
+read yields ciphertext, and every unwrap is a call to the key service, whose
+data-access audit logging is on. None of it is listed back to you (a webhook
+shows as its host, with its port when the URL names one), none of it is logged,
+and it is opened only to post on your behalf, to rotate a webhook's secret, and
+to revoke the grant at the vendor when a connection is disconnected or erased.
+
+A webhook is the one place you name a host we then connect to, so that host is
+checked before we store it, again before we dial it, and once more when its
+name resolves: the checks refuse `localhost`, names ending in `.local` or
+`.internal`, and every private, loopback, link-local (the cloud's metadata
+address among them), shared or reserved address, and a redirect is not
+followed. Every delivery to it
+is signed over the exact bytes sent, so your receiver can verify it came from
+us.
+
+The one end-user identifier telemetry carries, `user.id`, is replaced before
+it is stored by its HMAC-SHA-256 under a key made for the project at its first
+export and sealed the same way under a second managed key, so a stored id
+names nobody outside the code that sent it, and one project's hashes match no
+other's. Prompts, completions, system instructions, tool inputs and outputs,
+retrieved documents, error messages and the attributes that name a person are
+dropped at the door and never reach a store; the [ingest page](/docs/api/ingest)
+lists every field, and a project's **Privacy** page shows the same list beside
+its content mode.
+
+Redaction is mechanical, not convention: in the server, the type that carries
+our own service credentials prints as `***` in logs and errors, and the
+console's logger masks a fixed list of header and token fields.
+
+## Access control
+
+On the hosted service, sign-in runs through an external identity provider; the
+platform never stores your password. For self-hosted deployments using built-in
+accounts, passwords are salted and hashed using Argon2id. Access is role-based:
+owner, admin and member, in an organization and again on each of its projects.
+One matrix decides every project verdict, enforced server-side on every internal
+call rather than in the browser.
+
+API keys belong to a project and expire after 30 days, 90 days (the default)
+or a year, or never, as chosen when one is minted. A key is shown once, at
+creation, and stored only as a SHA-256 hash. Rotate or revoke at any time; both
+are audited. The console never uses one: it reaches the server with your
+session, and API keys exist for your own code.
+
+## Traffic and edge security
+
+Traffic to the platform is served over TLS. The browser never talks to a
+backend service directly. Every request a person makes goes through the
+console's server, which reaches internal services over the private network
+carrying a service credential. Machines reach the server on a host of its own,
+`api.telmoni.com`: ingest and the read API behind a project API key, and the
+CLI's lanes behind the device code or bearer they carry. The read API and the
+CLI's lanes are metered by source address and by credential, and ingest by
+project. The
+exceptions are the requests a vendor signs, each admitted by its signature
+instead: Slack's events, and, on the hosted service, Stripe's billing webhook,
+both posted to the server directly.
+
+Every response from the console carries a fixed set of headers from its
+configuration: `Strict-Transport-Security` (two years, `includeSubDomains`,
+`preload`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy`
+that denies camera, microphone and geolocation. Pages also carry a Content
+Security Policy minted per request: scripts run only from the console's own
+origin or with that request's nonce, connections go only to its origin, frames are
+refused in both directions (`frame-src 'none'`, `frame-ancestors 'none'`),
+plugins are refused (`object-src 'none'`), the document base is pinned to the
+console (`base-uri 'self'`), images load from the console, inline `data:` and
+`blob:` sources and any `https:` origin, styles from the console and inline,
+and forms may post only
+to the console and to the identity provider's origins. The routes a page's
+script calls directly read the browser's `Sec-Fetch-Site` header: the event
+stream, the agent's turns and the session heartbeat answer `403` to a request
+from another site; `/auth/logout` from another site redirects home without
+signing out, whether a link (a `GET` whose header says `cross-site`) or a form
+post (a `POST` whose Fetch Metadata or `Origin` names another site); and the
+`/cli` door refuses any request whose header says it came from a page (any
+value but `none`), since the CLI sends no such header.
+
+## Payments
+
+Every organization is on the free Hobby plan, and no payment details are
+collected. The hosted service's billing is built on Stripe: a card is entered on
+Stripe's own Checkout and billing-portal pages, and we never see or store its
+number. The hosted service stores a subscription's status, the end of its
+current period and Stripe's identifiers for it, and Stripe holds the invoices.
+
+## Audit
+
+Each change the [audit log](/docs/workspace/audit-log) records commits in the same
+database transaction as its audit record, attributed to the acting principal,
+so a failed audit write fails the operation; that page also lists what is not
+recorded. The audit log is append-only and retained by policy, including
+through organization and account deletion. An owner or admin can export it by
+range; the file is visible to the person who started it alone, kept 7 days,
+and deleted sooner with the organization or their account.
+
+## Data deletion
+
+Deleting an organization closes it at once and cancels its subscription, then,
+after a short grace for requests still in flight, runs an ordered, idempotent
+cascade across every service: its projects and memberships, pending
+invitations, API keys, connected channels and endpoints and the notices queued
+for them, the audit log's exports, the console agent's conversations and
+search index, and its projects' telemetry: every span and every hour of
+totals marked deleted at once, gone from every read within moments as the
+store applies the mark, and rewritten off the disk by the nightly rotation,
+with their settings and hashing keys.
+Deleting a project alone runs the same purge for that project. Deleting your
+account erases your sessions, the audit log exports you started and your
+record at the identity provider, together with every organization you own
+alone. Neither can be undone. Each module's tests check that its purge
+removes the organization's rows from the tables they name, telemetry's in
+ClickHouse among them. The audit log is the deliberate exception; invoices
+stay with Stripe.
+
+Deleting your account also removes the memberships you hold in other
+organizations, writes each removal into that organization's audit chain, and
+rewrites the notices in their feeds that named you. Every step of both
+deletions is idempotent, and the deletion sweep retries an unfinished one every
+ten minutes.
+
+## What we hold
+
+Your sign-in identity from the identity provider, your sessions (each one's
+device label and when it started and was last seen), your projects and who
+belongs to them at what role, the addresses you invite, the API keys you
+minted, the chat channels and
+webhook endpoints you connected and the notices we sent to them, your
+conversations with the console agent and its search index, your audit trail
+and the exports of it you start (each kept 7 days), your subscription's
+status (Stripe holds the invoices), and the telemetry your agents send: runs,
+steps, model and tool calls, with their names, counts and timings, the tags
+you set, conversation ids and hashed end-user ids, never a prompt or a
+completion. The platform runs no workload on your behalf, so everything here
+is either something you told us or the record of something you did.
+
+## Reporting a vulnerability
+
+This is the security policy of every Telmoni repository, the platform
+([`telmoni/telmoni`](https://github.com/telmoni/telmoni)), which serves these
+pages, the CLI
+([`telmoni/telmoni-cli`](https://github.com/telmoni/telmoni-cli)), the agent
+skills ([`telmoni/skills`](https://github.com/telmoni/skills)) and the
+organization's community files
+([`telmoni/.github`](https://github.com/telmoni/.github)), and of the hosted
+service. In the platform that means the server crates, the console, the four
+SDKs, the documentation it serves, the Helm chart and the compose file; in
+the CLI, the binary, the installer and the credentials file; in the
+skills, the skill and reference files an agent acts on, and the plugin
+manifests it is installed through; in the community files, the pages and
+templates every other repository inherits, and the organization's profile.
+A problem in a dependency counts when Telmoni is exposed to it.
+
+If you find a security issue, do not open a public issue or pull request.
+Report it privately through the advisory form of the repository concerned
+([platform](https://github.com/telmoni/telmoni/security/advisories/new),
+[CLI](https://github.com/telmoni/telmoni-cli/security/advisories/new),
+[skills](https://github.com/telmoni/skills/security/advisories/new),
+[community files](https://github.com/telmoni/.github/security/advisories/new)), or by email to
+hello@telmoni.com. Tell us what you found, how to reproduce it, and the
+commit, version or URL you tested against. We acknowledge within three working
+days, keep you informed while we fix it, credit reporters who ask, and ask for
+a reasonable window before you publish. There is no bug bounty. Fixes land on
+each repository's `main`; the CLI's ship in its next release, and the skills'
+reach you when you update the plugin.
+
+We welcome good-faith research. Test only against your own organization and
+data: do not access, modify, or exfiltrate another tenant's information,
+degrade the service for others, or run denial-of-service or high-volume scans.
+Research that stays within these bounds is authorized and we will not pursue
+action over it.
+
+## Related documents
+
+- [Security FAQ](/docs/legal/security-faq): the questions a review asks first
+- [Privacy Policy](/docs/legal/privacy-policy) and the [Privacy FAQ](/docs/legal/privacy-faq)
+- [Terms of Service](/docs/legal/terms-of-service)
+- [Subprocessors](/docs/legal/subprocessors)

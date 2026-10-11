@@ -1,0 +1,155 @@
+---
+title: "Security FAQ"
+description: "Short answers on the hosted service's security: encryption in transit and at rest, tenant isolation, sign-in and sessions, API keys and rate limits, what is logged, the audit log, backups, certifications, availability, and how to report a vulnerability."
+---
+
+Short answers, for a review. The [Security](/docs/legal/security) page
+describes each control as enforced today; this page answers the questions a
+review asks first, and names what we do not have.
+
+## Is my data encrypted in transit?
+
+Yes. The console and the API are served over TLS, with HTTP Strict Transport
+Security set for two years with `includeSubDomains` and `preload`. The SDKs
+and the CLI refuse plain HTTP to any host but the machine they run on, and
+follow no redirect, since each request carries a credential.
+
+## And at rest?
+
+Yes. Every store sits under Google Cloud's encryption at rest. On top of it,
+a connector's grant or signing secret is sealed with AES-256-GCM under a key
+that is that row's alone, wrapped by a key held in Cloud KMS and never in the
+database or the service's environment, so a backup or a replica read yields
+ciphertext; the key each project's end-user ids are hashed under is sealed
+the same way. API keys are stored only as SHA-256 hashes, and session tokens
+as hashes too.
+
+## How are tenants kept apart?
+
+The organization is the unit of tenancy. In the database, tenant-scoped
+tables have row-level security enabled and forced, keyed to the one
+organization a transaction is bound to, so a query not bound to a tenant
+matches no rows. Telemetry lives in a column store of its own, where a row
+policy holds the server's user to the projects a read names and every read
+is bounded by a window of days. The tests exercise these policies as the
+roles the server connects as, never as a superuser.
+
+## How do people sign in?
+
+Through an external identity provider; the hosted service stores no password.
+A session is an opaque short-lived bearer and a refresh token rotated on
+every use, both stored as hashes; a session ends when you sign out, when it is
+revoked from **Active sessions**, or after 30 days unused. The session
+cookie is `HttpOnly`, `Secure` and `SameSite=Lax`. The CLI signs in with the
+device-code flow, so no browser ever has to reach the machine.
+
+## How is access controlled?
+
+Three roles — owner, admin and member — in an organization and again on each
+of its projects, decided by one matrix on the server for every call, never in
+the browser. Deleting an organization or an account needs a confirmation
+code sent to the owner's address; five wrong guesses burn it.
+
+## How do API keys work?
+
+A key belongs to one project, carries the scopes it was minted with —
+`read` for the API, `ingest` for telemetry — and expires after 30 days, 90
+days, a year or never, as chosen. It is shown once and stored as a hash.
+Rotation keeps the old key working for a day while you deploy the new one;
+revocation ends a key at once. Both are audited.
+
+## Are requests rate-limited?
+
+Yes. The read API allows 600 requests a minute per key and 1,200 per source
+address; ingest 600 exports a minute per project; the CLI's lanes 120 a
+minute per source address. A limited request is refused with a `Retry-After`
+that says when to try again.
+
+## What protects the browser?
+
+Every response carries `Strict-Transport-Security`, `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`, a strict `Referrer-Policy` and a
+`Permissions-Policy` that denies camera, microphone and geolocation. Pages
+carry a Content Security Policy minted per request, with a nonce for the
+request's scripts and frames refused in both directions. The routes a page's
+script calls read the browser's `Sec-Fetch-Site` header and refuse a request
+from another site.
+
+## What do you log?
+
+Identifiers, timings and outcomes: organization and project ids, never
+addresses, names or free text. The type that carries a service credential
+prints as `***`, the console's logger masks a fixed list of header and token
+fields, and telemetry's store masks every quoted literal in its own log, so
+no end-user id reaches a log line. Operational logs are kept 30 days.
+
+## Is there an audit trail?
+
+Yes. Each change the audit log records commits in the same transaction as the
+record, attributed to the acting principal, so a failed audit write fails the
+operation. The log is append-only, hash-chained per organization, verified
+daily, kept through the organization's deletion, and exportable as JSON or
+CSV with a script to verify the chain ([Audit log](/docs/workspace/audit-log)).
+
+## How are backups kept?
+
+The database is backed up daily with seven days of point-in-time recovery,
+and thirty daily backups are kept. Telemetry's store is backed up nightly to
+a bucket in the same region, as the pod's own identity with no key anywhere;
+twenty-nine nights are kept, and the bucket deletes anything older than
+thirty days, with nothing held after it is deleted. Deleted data leaves the backups as they expire, within thirty days.
+
+## Where does the service run, and who can reach it?
+
+On Google Cloud in `us-central1`, behind a load balancer that terminates TLS.
+Inside the cluster, network policies deny all traffic by default: the load
+balancer reaches the console and the server's machine lanes, the console
+reaches the server, the server reaches its stores, and nothing else reaches
+any of them. Workloads reach Google Cloud as their own identities, with no
+service-account key anywhere, and Terraform never writes a secret into its
+state. Cloud Audit Logs record every administrative change to the project,
+and data-access logging is on for the key service.
+
+## Do you hold a SOC 2 or ISO 27001 certification?
+
+No. Telmoni holds no certification today and asserts none it does not hold.
+The [Security](/docs/legal/security) page describes the controls as they are
+enforced, which is what we can show you.
+
+## Is there an SLA?
+
+Not today. The service is provided as available, as the
+[Terms of Service](/docs/legal/terms-of-service#disclaimers) state. Where we
+discontinue a material feature we give reasonable advance notice.
+
+## What happens in an incident?
+
+We notify you without undue delay after becoming aware of a personal-data
+breach affecting your personal data, with enough information for you to meet
+your own notification obligations, and assist in investigating and
+remediating it.
+
+## How do I report a vulnerability?
+
+Privately: through the advisory form of the repository concerned, or by
+email to hello@telmoni.com, never in a public issue. We acknowledge within
+three working days, keep you informed while we fix it, and credit reporters
+who ask. There is no bug bounty. Good-faith research against your own
+organization and data is authorized; the
+[Security](/docs/legal/security#reporting-a-vulnerability) page has the
+bounds.
+
+## Can I run it myself?
+
+Yes. The platform is open source, and the
+[production guide](/docs/self-host/production) describes the roles, the
+encryption keys, the sweeps and what the server refuses at boot. A
+self-hosted deployment's security is its operator's; these answers describe
+the hosted service.
+
+## Related documents
+
+- [Security](/docs/legal/security)
+- [Privacy Policy](/docs/legal/privacy-policy) and the [Privacy FAQ](/docs/legal/privacy-faq)
+- [Terms of Service](/docs/legal/terms-of-service)
+- [Subprocessors](/docs/legal/subprocessors)
