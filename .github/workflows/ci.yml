@@ -1,0 +1,63 @@
+# CI: the book built into the platform's console, with the platform's tests
+# that read its pages (`make check`, which runs the platform's `book-check`),
+# and the spell-check the platform's CI ran over these pages before they moved
+# here. Checkouts run with persist-credentials: false so the GITHUB_TOKEN never
+# lingers in .git/config for a later step to read.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  check:
+    name: The book in the platform's console
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # Side by side, as on a laptop, so `make check` finds the platform at
+      # `../telmoni`, its default. The platform's `main` is what serves the
+      # book next, so a page is held to the code as it stands there.
+      - uses: actions/checkout@v7
+        with:
+          path: docs
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: telmoni/telmoni
+          path: telmoni
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: telmoni/web/package-lock.json
+      - run: npm ci
+        working-directory: telmoni/web
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: telmoni
+      - run: make -C docs check
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: crate-ci/typos@v1
