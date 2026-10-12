@@ -52,7 +52,7 @@ Telemetry data: what the SDKs in your own code, or an exporter you point at
 the ingest endpoint, send about your agents' runs, kept as metadata: each
 run's id, the agent's name, the models and tools it called, token counts,
 timings, statuses, an error's type, the names of its steps, the tags you set,
-the id you give a conversation, and the id you give the end user a run served,
+the id you give a session, and the id you give the end user a run served,
 which is replaced by a keyed hash before it is stored. Prompts, completions,
 system instructions, tool inputs and outputs, retrieved documents, error
 messages and any attribute that names a person are dropped before anything is
@@ -91,7 +91,7 @@ not work without the session cookie.
 ## How we use it
 
 To operate the service: enforcing your project's access rules, applying your
-plan's entitlements, showing you your agents' runs as traces, conversations
+plan's entitlements, showing you your agents' runs as traces, sessions
 and users, delivering the notifications you subscribe to, securing
 the platform, sending transactional email (invitations, organization and
 project transfer offers and their outcomes, and email-change and deletion
@@ -200,7 +200,7 @@ personal data you include in your content. The categories are account and
 contact data for your users, the email addresses you invite, the end-user ids
 you send, which we store only as keyed hashes, and any personal data you place
 in a project, token or endpoint name, or in an agent's or a step's name, a tag
-or a conversation id. Special
+or a session id. Special
 categories are not required to use the service; if you submit them within
 your content, you are responsible for having a lawful basis to do so.
 
