@@ -134,11 +134,12 @@ value but `none`), since the CLI sends no such header.
 
 ## Payments
 
-Every organization is on the free Hobby plan, and no payment details are
-collected. The hosted service's billing is built on Stripe: a card is entered on
-Stripe's own Checkout and billing-portal pages, and we never see or store its
-number. The hosted service stores a subscription's status, the end of its
-current period and Stripe's identifiers for it, and Stripe holds the invoices.
+Every organization starts on the free Hobby plan, and no payment details are
+collected until it moves to a paid plan. The hosted service's billing is built
+on Stripe: a card is entered on Stripe's own Checkout and billing-portal pages,
+and we never see or store its number. The hosted service stores a
+subscription's status, the end of its current period and Stripe's identifiers
+for it, and Stripe holds the invoices.
 
 ## Audit
 
