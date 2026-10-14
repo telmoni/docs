@@ -42,39 +42,51 @@ everything it holds, until then. Its **Billing** page names the day and
 offers **Keep Teams**, which takes the move back any time before it. A
 cancellation drops a pending move, since it ends the period first.
 
+Cancelling runs to the end of the period, then the organization falls to
+Hobby. An organization that could not fall there — another of yours holds
+your Hobby place, as below — is refused the cancellation, and its **Billing**
+page names the ways out instead: delete it, merge its projects into your
+Hobby organization, or hand it to someone whose Hobby place is free.
+
 ## One Hobby organization
 
-While Pro and Teams are for sale, the organizations a person owns on Hobby take
-things in one at a time: one is their Hobby organization, and any other is
-**dormant**, as Vercel holds an account to one Hobby team. A dormant
-organization keeps its projects, its data and its members, and stays readable,
-exportable and deletable, but takes in nothing new: exports to the
-OpenTelemetry endpoint, questions to the console agent and invitations are
-refused with a `402` that names Pro, until it moves to Pro or Teams. Being a
-member of other people's organizations is never limited.
+While Pro and Teams are for sale, a person has one free organization, their
+**Hobby place**, as Vercel holds an account to one Hobby team: it is held by
+their Hobby organization, or kept by a paid one set to fall to Hobby when its
+period ends. Every other organization of theirs is paid for before it exists.
+Being a member of other people's organizations is never limited.
 
 - **Your first organization** is your Hobby organization.
-- **Another you create** while you own a Hobby organization starts dormant,
-  and opens on its **Billing** page, where it moves to Pro or Teams. The dialog
-  that creates it says so first.
+- **Another you create** while something of yours holds your Hobby place is
+  paid for first: the dialog that creates it asks whether it starts on Pro or
+  Teams, sends you to Stripe's payment page, and the organization is created
+  the moment the payment is confirmed, and opens. Nothing is created, and
+  nothing charged, if you leave the payment page.
 - **A paid organization you cancel** keeps its plan to the end of its period,
-  then falls to Hobby: dormant, if you already had a Hobby organization, or
-  another set to fall to it, when you cancelled, which the cancel dialog says
-  before you confirm. Otherwise it keeps the place for itself until it falls,
-  so one you create meanwhile starts dormant, and taking the cancellation back
-  frees the place again. One whose card fails until its retries run out falls
-  the same way, dormant if you have a Hobby organization by then.
-- **When your Hobby organization leaves Hobby** — deleted, handed to someone
-  else, or moved to Pro or Teams — the dormant one that has waited longest
-  takes its place.
-- **Handing an organization over:** one on Hobby, or set to fall to it, goes
-  only to an owner with no organization on Hobby or set to fall to it; the
-  offer, or its acceptance, is otherwise refused, naming Pro. A paid
-  organization goes to anyone.
-- **Merging:** a dormant organization's owner can merge it into their Hobby
-  organization from its **Billing** page. Every project moves across, with its
-  API keys, its data and the people on it, and the emptied organization is
-  deleted, confirmed with a code emailed to its owner.
+  then falls to Hobby, and holds your Hobby place from the moment you set the
+  cancellation; taking the cancellation back frees the place. While another of
+  yours holds the place, the cancellation is refused, since the organization
+  could not fall to Hobby: delete it, merge it into your Hobby organization,
+  or hand it over instead, as its **Billing** page says.
+- **A card that fails** until Stripe's retries run out ends the plan all the
+  same. The organization falls to Hobby when your Hobby place is free; when
+  another of yours holds it, the organization is **paused**: it keeps its
+  projects, its data and its members, and stays readable, exportable and
+  deletable, but takes in nothing new — exports to the OpenTelemetry
+  endpoint, questions to the console agent and invitations are refused with a
+  `402` that names Pro — until it is on Pro or Teams again, merged into your
+  Hobby organization, handed to someone whose place is free, or, once your
+  place frees, moved to Hobby from its **Billing** page. Nothing resumes on its
+  own.
+- **Handing an organization over:** one on Hobby, paused, or set to fall to
+  Hobby goes only to an owner with no organization on Hobby or set to fall to
+  it; the offer, or its acceptance, is otherwise refused, naming Pro. A paid
+  organization goes to anyone. A paused one handed to someone whose place is
+  free takes that place and resumes.
+- **Merging:** the owner of a paid or paused organization can merge it into
+  their Hobby organization from its **Billing** page. Every project moves
+  across, with its API keys, its data and the people on it, and the emptied
+  organization is deleted, confirmed with a code emailed to its owner.
 
 Each change is written to the organization's audit log and raised in its
 notifications.
