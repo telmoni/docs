@@ -1,0 +1,29 @@
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+# Every copy of it too: a backup like `.env.before-x` holds the same secrets.
+.env.*
+
+# ── AI / tooling state ────────────────────────────────────────────────────────
+.claude/
+.agents/
+.gemini/
+.aider*
+.cursor/
+
+# ── Local ─────────────────────────────────────────────────────────────────────
+# The maintainer's own notes, never pages.
+scratch/
+*.log
+
+# ── Editor / OS ───────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.zed/
+*.swp
+*.swo
+*.orig
+*.rej
+*.bak
+.DS_Store
+._*
+Thumbs.db
