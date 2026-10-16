@@ -31,6 +31,7 @@ The customer documentation for Telmoni ([`telmoni/docs`](https://github.com/telm
 - Links use the served path (`/docs/integrations/webhooks`), never a file path. A page in `content/` links a `hosted/` page by its address on telmoni.com (`https://telmoni.com/docs/legal/subprocessors`), since a self-hosted console serves no `hosted/` page.
 - Shell blocks use the `console` fence with a `$ ` prompt, and show only output a host really produced.
 - Outside a code fence, a bare `<flag>` or `{param}` breaks the build, and HTML comments are invalid.
+- A comment inside a code sample is one short line, and says *why*, never *what*: the page around it does the explaining.
 - Runnable specs live in the platform's code, and the book prints them: a golden vector, a constant, a limit. Check every value against source before writing it; when the code changes, the page changes with it.
 - `content/errors.mdx` and `content/api/field-inventory.mdx` keep their paths: the platform's `error_catalog.rs` and `field_inventory.rs` read them there, and fail when a row and the code disagree.
 - `hosted/workspace/billing.mdx`'s table is the hosted service's catalogue, held to it by that service's own test: it changes only with the catalogue.
