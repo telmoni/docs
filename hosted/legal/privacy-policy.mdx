@@ -3,7 +3,7 @@ title: "Privacy Policy"
 description: "What the hosted service collects, why, and what happens to it: cookies, subprocessors, international transfers, retention, your privacy rights, and what deleting an organization or an account actually deletes."
 ---
 
-Last updated 2026-10-13.
+Last updated 2026-10-17.
 
 This policy describes what the service collects, why, and what happens to it.
 The short version: we store what is needed to run your organization and bill
@@ -243,7 +243,8 @@ working, and its subscription is cancelled and refunded. A verified cascade
 then hard-deletes its projects, memberships, pending invitations, API keys,
 notifications, audit log exports, agent conversations and search index, and
 its projects' telemetry — every span and every hour of totals, with their
-settings, saved views and hashing keys — across every service; it deletes nobody's
+settings, saved views and hashing keys, their monitors with the runs still
+open and their ping keys — across every service; it deletes nobody's
 account, and it cannot be undone.
 
 Telemetry is kept only while its project is active: for 360 days after it
@@ -252,9 +253,10 @@ the hourly totals derived from it, which name no user and no tag, for 13
 months. Deleting a project, or an organization with its projects, marks every
 span and every hour of totals of the project deleted the moment the purge
 runs, so that within moments nothing reads them again, and the nightly
-maintenance removes them from disk; the project's telemetry settings and the key its end-user ids were
-hashed under go with the rest of its data. Deleted telemetry then leaves our
-backups as they expire, within a further 30 days.
+maintenance removes them from disk; the project's telemetry settings, its
+monitors with the runs still open, its ping keys and the key its end-user ids
+were hashed under go with the rest of its data. Deleted telemetry then leaves
+our backups as they expire, within a further 30 days.
 
 Deleting your account erases your sessions, your memberships, the audit log
 exports you started and your record at the identity provider, together with
