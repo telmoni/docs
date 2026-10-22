@@ -112,6 +112,29 @@ still add those members to its projects, which brings nobody new in. Its
 holds as many members as it invites, and being a member of other people's
 organizations is never limited.
 
+## Pings and data out
+
+While Pro and Teams are for sale, each plan holds an organization's monitors
+to so many pings a minute together, room for every monitor the plan holds to
+run every five minutes with its start and its end pinged; and its machines
+to so much data out a UTC day: what the read API and the CLI answer, with
+what each request's connection costs, and every export downloaded. The Plans
+page posts each plan's numbers.
+
+- **Past the pings a minute,** a ping is answered `429` with `Retry-After`
+  and is not recorded, and a monitor's schedule that would need more is
+  refused with a `402` that names what lifts it, counting two pings a run. A
+  paused monitor's schedule counts too, since its crontab still pings, and a
+  schedule may always be made less frequent. A checkpoint is a ping like any
+  other, so a job that checkpoints often needs room beyond its start and end.
+- **Past the day's data out,** the read API and every export answer `429`
+  until midnight UTC; the CLI's answers count toward the day but are never
+  refused. An audit log export is built no larger than the day, so a long log
+  comes a day's worth at a time.
+- **The Owner and Admins are told** in the organization's feed once a day
+  while either lasts, and when a ping or a run named a monitor the plan has
+  no room for.
+
 ## Self-hosted installations
 
 A self-hosted installation has no plans, no usage limits and no billing.
