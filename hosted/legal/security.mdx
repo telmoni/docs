@@ -197,15 +197,23 @@ This is the security policy of every Telmoni repository, the platform
 ([`telmoni/telmoni`](https://github.com/telmoni/telmoni)), which serves these
 pages, the CLI
 ([`telmoni/telmoni-cli`](https://github.com/telmoni/telmoni-cli)), the agent
-skills ([`telmoni/skills`](https://github.com/telmoni/skills)) and the
-organization's community files
+skills ([`telmoni/skills`](https://github.com/telmoni/skills)), the
+coding-agent plugins
+([`telmoni/claude-observability-plugin`](https://github.com/telmoni/claude-observability-plugin),
+[`telmoni/codex-observability-plugin`](https://github.com/telmoni/codex-observability-plugin),
+[`telmoni/cursor-observability-plugin`](https://github.com/telmoni/cursor-observability-plugin)
+and
+[`telmoni/opencode-observability-plugin`](https://github.com/telmoni/opencode-observability-plugin))
+and the organization's community files
 ([`telmoni/.github`](https://github.com/telmoni/.github)), and of the hosted
 service. In the platform that means the server crates, the console, the four
 SDKs, the documentation it serves, the Helm chart and the compose file; in
 the CLI, the binary, the installer and the credentials file; in the
 skills, the skill and reference files an agent acts on, and the plugin
-manifests it is installed through; in the community files, the pages and
-templates every other repository inherits, and the organization's profile.
+manifests it is installed through; in the coding-agent plugins, the code your
+coding agent runs, Cursor's `setup` among it, and the key files they read; in
+the community files, the pages and templates every other repository inherits,
+and the organization's profile.
 A problem in a dependency counts when Telmoni is exposed to it.
 
 If you find a security issue, do not open a public issue or pull request.
@@ -214,12 +222,13 @@ Report it privately through the advisory form of the repository concerned
 [CLI](https://github.com/telmoni/telmoni-cli/security/advisories/new),
 [skills](https://github.com/telmoni/skills/security/advisories/new),
 [community files](https://github.com/telmoni/.github/security/advisories/new)), or by email to
-hello@telmoni.com. Tell us what you found, how to reproduce it, and the
-commit, version or URL you tested against. We acknowledge within three working
-days, keep you informed while we fix it, credit reporters who ask, and ask for
-a reasonable window before you publish. There is no bug bounty. Fixes land on
-each repository's `main`; the CLI's ship in its next release, and the skills'
-reach you when you update the plugin.
+hello@telmoni.com, where a coding-agent plugin's goes. Tell us what you found,
+how to reproduce it, and the commit, version or URL you tested against. We
+acknowledge within three working days, keep you informed while we fix it,
+credit reporters who ask, and ask for a reasonable window before you publish.
+There is no bug bounty. Fixes land on each repository's `main`; the CLI's and
+the coding-agent plugins' ship in their next release, and the skills' reach
+you when you update the skills.
 
 We welcome good-faith research. Test only against your own organization and
 data: do not access, modify, or exfiltrate another tenant's information,
